@@ -4,310 +4,122 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CRM — Mi Negocio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
   :root {
-    --bg: #F7F6F2;
-    --surface: #FFFFFF;
-    --border: #E2E0D8;
-    --border2: #C8C6BC;
-    --text: #1A1918;
-    --muted: #7A786F;
-    --accent: #2D5F3F;
-    --accent-light: #E8F2EC;
-    --danger: #C0392B;
-    --danger-light: #FDECEA;
-    --warn: #B45309;
-    --warn-light: #FEF3E2;
-    --info: #1D4E89;
-    --info-light: #EBF2FB;
-    --radius: 10px;
-    --radius-sm: 6px;
+    --bg:#F7F6F2;--surface:#FFFFFF;--border:#E2E0D8;--border2:#C8C6BC;
+    --text:#1A1918;--muted:#7A786F;--accent:#2D5F3F;--accent-light:#E8F2EC;
+    --danger:#C0392B;--danger-light:#FDECEA;--warn:#B45309;--warn-light:#FEF3E2;
+    --info:#1D4E89;--info-light:#EBF2FB;--radius:10px;--radius-sm:6px;
   }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
-    min-height: 100vh;
-  }
-
-  /* LAYOUT */
-  .shell { display: flex; min-height: 100vh; }
-
-  .sidebar {
-    width: 220px;
-    min-width: 220px;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    position: fixed;
-    top: 0; left: 0; bottom: 0;
-    z-index: 10;
-  }
-
-  .logo {
-    padding: 20px 20px 16px;
-    border-bottom: 1px solid var(--border);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: -0.3px;
-  }
-  .logo span { color: var(--muted); font-weight: 400; font-size: 12px; display: block; margin-top: 2px; }
-
-  .magenta-credit {
-    padding: 14px 20px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .magenta-credit .mg-label {
-    font-size: 10px;
-    color: var(--muted);
-    line-height: 1.3;
-  }
-  .magenta-credit .mg-name {
-    font-size: 13px;
-    font-weight: 700;
-    color: #E8185A;
-    letter-spacing: -0.3px;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .mg-icon {
-    width: 28px;
-    height: 28px;
-    background: #E8185A;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .mg-icon svg { width: 16px; height: 16px; }
-
-  nav { padding: 12px 10px; flex: 1; }
-  nav button {
-    width: 100%;
-    text-align: left;
-    padding: 9px 12px;
-    border: none;
-    background: none;
-    border-radius: var(--radius-sm);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13.5px;
-    color: var(--muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    margin-bottom: 2px;
-    transition: background 0.15s, color 0.15s;
-  }
-  nav button:hover { background: var(--bg); color: var(--text); }
-  nav button.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
-  nav button .ico { font-size: 15px; width: 18px; text-align: center; }
-
-  .main { margin-left: 220px; padding: 28px 32px; flex: 1; }
-
-  .page { display: none; }
-  .page.active { display: block; }
-
-  .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 22px;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .page-title { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
-
-  /* METRICS */
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .metric-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 18px;
-  }
-  .metric-card .m-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .metric-card .m-val { font-size: 26px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; letter-spacing: -1px; }
-  .metric-card .m-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
-
-  /* TOOLBAR */
-  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
-  .toolbar input, .toolbar select {
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-    transition: border 0.15s;
-  }
-  .toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
-  .toolbar input { min-width: 180px; }
-
-  .btn {
-    padding: 8px 16px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
-    transition: background 0.15s, border 0.15s;
-    white-space: nowrap;
-  }
-  .btn:hover { background: var(--bg); border-color: var(--border2); }
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-    font-weight: 500;
-  }
-  .btn-primary:hover { background: #245233; border-color: #245233; }
-  .btn-danger { color: var(--danger); border-color: var(--danger-light); }
-  .btn-danger:hover { background: var(--danger-light); }
-
-  /* TABLE */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead th {
-    text-align: left;
-    padding: 10px 14px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
-  }
-  tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover td { background: #FAFAF8; }
-
-  .action-btn {
-    padding: 4px 10px;
-    font-size: 12px;
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    background: var(--surface);
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .action-btn:hover { border-color: var(--border2); color: var(--text); background: var(--bg); }
-
-  .empty-state { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
-  .empty-state .emo { font-size: 28px; margin-bottom: 8px; }
-
-  /* BADGES */
-  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-  .b-green { background: var(--accent-light); color: var(--accent); }
-  .b-yellow { background: var(--warn-light); color: var(--warn); }
-  .b-red { background: var(--danger-light); color: var(--danger); }
-  .b-blue { background: var(--info-light); color: var(--info); }
-  .b-gray { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
-
-  /* MODAL */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 100;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 60px 16px;
-    overflow-y: auto;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--surface);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 24px;
-    width: 100%;
-    max-width: 460px;
-    position: relative;
-  }
-  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 18px; letter-spacing: -0.3px; }
-  .form-row { margin-bottom: 13px; }
-  .form-row label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
-  .form-row input, .form-row select, .form-row textarea {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-    transition: border 0.15s;
-  }
-  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: var(--accent); }
-  .form-row textarea { resize: vertical; min-height: 72px; }
-  .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .modal-footer .left { margin-right: auto; }
-
-  /* ACTIVITY */
-  .activity-list { }
-  .activity-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .activity-item:last-child { border-bottom: none; }
-  .activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-  .dot-green { background: var(--accent); }
-  .dot-yellow { background: #D97706; }
-  .dot-red { background: var(--danger); }
-  .dot-blue { background: var(--info); }
-  .dot-gray { background: var(--muted); }
-  .activity-body { flex: 1; }
-  .activity-body .a-main { font-size: 13px; color: var(--text); }
-  .activity-body .a-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  /* RESPONSIVE */
-  @media (max-width: 640px) {
-    .sidebar { width: 100%; min-width: 0; position: relative; flex-direction: row; flex-wrap: wrap; height: auto; }
-    .main { margin-left: 0; padding: 16px; }
-    .shell { flex-direction: column; }
-    nav { display: flex; flex-wrap: wrap; padding: 6px; }
-    nav button { width: auto; }
-    .logo { padding: 14px 16px 10px; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+  .shell{display:flex;min-height:100vh}
+  .sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:10}
+  .logo{padding:20px 20px 16px;border-bottom:1px solid var(--border);font-size:15px;font-weight:600;color:var(--accent);letter-spacing:-0.3px}
+  .logo span{color:var(--muted);font-weight:400;font-size:12px;display:block;margin-top:2px}
+  .magenta-credit{padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .mg-label{font-size:10px;color:var(--muted);line-height:1.3}
+  nav{padding:12px 10px;flex:1}
+  nav button{width:100%;text-align:left;padding:9px 12px;border:none;background:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13.5px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:9px;margin-bottom:2px;transition:background 0.15s,color 0.15s}
+  nav button:hover{background:var(--bg);color:var(--text)}
+  nav button.active{background:var(--accent-light);color:var(--accent);font-weight:500}
+  nav button .ico{font-size:15px;width:18px;text-align:center}
+  .main{margin-left:220px;padding:28px 32px;flex:1}
+  .page{display:none}.page.active{display:block}
+  .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px}
+  .page-title{font-size:20px;font-weight:600;letter-spacing:-0.4px}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+  .metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .metric-card .m-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+  .metric-card .m-val{font-size:26px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;letter-spacing:-1px}
+  .metric-card .m-sub{font-size:11px;color:var(--muted);margin-top:3px}
+  .toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+  .toolbar input,.toolbar select{padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);outline:none;transition:border 0.15s}
+  .toolbar input:focus,.toolbar select:focus{border-color:var(--accent)}
+  .toolbar input{min-width:180px}
+  .btn{padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer;transition:background 0.15s,border 0.15s;white-space:nowrap}
+  .btn:hover{background:var(--bg);border-color:var(--border2)}
+  .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+  .btn-primary:hover{background:#245233;border-color:#245233}
+  .btn-danger{color:var(--danger);border-color:var(--danger-light)}
+  .btn-danger:hover{background:var(--danger-light)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{text-align:left;padding:10px 14px;font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg)}
+  tbody td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:#FAFAF8}
+  .action-btn{padding:4px 10px;font-size:12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--muted);cursor:pointer;transition:all 0.15s}
+  .action-btn:hover{border-color:var(--border2);color:var(--text);background:var(--bg)}
+  .empty-state{padding:40px;text-align:center;color:var(--muted);font-size:13px}
+  .empty-state .emo{font-size:28px;margin-bottom:8px}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500}
+  .b-green{background:var(--accent-light);color:var(--accent)}
+  .b-yellow{background:var(--warn-light);color:var(--warn)}
+  .b-red{background:var(--danger-light);color:var(--danger)}
+  .b-blue{background:var(--info-light);color:var(--info)}
+  .b-gray{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:flex-start;justify-content:center;padding:60px 16px;overflow-y:auto}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:24px;width:100%;max-width:460px;position:relative}
+  .modal h3{font-size:16px;font-weight:600;margin-bottom:18px;letter-spacing:-0.3px}
+  .form-row{margin-bottom:13px}
+  .form-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+  .form-row input,.form-row select,.form-row textarea{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);outline:none;transition:border 0.15s}
+  .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--accent)}
+  .form-row textarea{resize:vertical;min-height:72px}
+  .modal-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+  .activity-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .activity-item:last-child{border-bottom:none}
+  .activity-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+  .dot-green{background:var(--accent)}.dot-yellow{background:#D97706}.dot-red{background:var(--danger)}.dot-blue{background:var(--info)}.dot-gray{background:var(--muted)}
+  .activity-body{flex:1}
+  .activity-body .a-main{font-size:13px;color:var(--text)}
+  .activity-body .a-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .drive-bar{padding:8px 20px;font-size:12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:var(--bg);color:var(--muted)}
+  .drive-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .drive-dot.ok{background:#2D5F3F}.drive-dot.warn{background:#D97706}.drive-dot.off{background:#ccc}
+  .login-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;align-items:center;justify-content:center;flex-direction:column}
+  .login-screen.visible{display:flex}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px 40px;max-width:380px;width:100%;text-align:center}
+  .login-box h2{font-size:18px;font-weight:600;margin-bottom:6px}
+  .login-box p{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5}
+  .login-box .skip{font-size:12px;color:var(--muted);margin-top:14px;cursor:pointer;text-decoration:underline;display:block}
+  .btn-google{background:#fff;border:1px solid var(--border2);color:var(--text);display:flex;align-items:center;gap:8px;font-weight:500;justify-content:center;width:100%;padding:10px 16px}
+  .btn-google:hover{background:var(--bg)}
+  @media(max-width:640px){
+    .sidebar{width:100%;min-width:0;position:relative;flex-direction:row;flex-wrap:wrap;height:auto}
+    .main{margin-left:0;padding:16px}
+    .shell{flex-direction:column}
+    nav{display:flex;flex-wrap:wrap;padding:6px}
+    nav button{width:auto}
   }
 </style>
 </head>
 <body>
 
+<div class="login-screen visible" id="login-screen">
+  <div class="login-box">
+    <img src="data:image/png;base64,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" width="52" height="52" style="border-radius:50%;margin-bottom:16px" alt="Magenta">
+    <h2>CRM Mi Negocio</h2>
+    <p>Conectá tu Google Drive para que tus datos queden guardados en tu propia cuenta y nunca se pierdan.</p>
+    <button class="btn btn-google" onclick="loginGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+      Conectar con Google Drive
+    </button>
+    <span class="skip" onclick="skipLogin()">Usar sin Drive (solo en este navegador)</span>
+  </div>
+</div>
+
 <div class="shell">
   <aside class="sidebar">
-    <div class="logo">
-      Mi Negocio CRM
-      <span>Gestión simple</span>
+    <div class="logo">Mi Negocio CRM<span>Gestión simple</span></div>
+    <div class="drive-bar" id="drive-bar">
+      <div class="drive-dot off" id="drive-dot"></div>
+      <span id="drive-status">No conectado</span>
     </div>
     <nav id="nav">
       <button class="active" data-page="dashboard"><span class="ico">◈</span> Resumen</button>
@@ -317,7 +129,7 @@
       <button data-page="cobranzas"><span class="ico">◑</span> Cobranzas</button>
       <button data-page="ofertas"><span class="ico">◐</span> Ofertas</button>
     </nav>
-        <div class="magenta-credit">
+    <div class="magenta-credit">
       <img src="data:image/png;base64,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" width="28" height="28" style="border-radius:50%;flex-shrink:0;object-fit:cover" alt="Magenta">
       <div>
         <div class="mg-label">Desarrollado por</div>
@@ -327,485 +139,316 @@
   </aside>
 
   <main class="main">
-
-    <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <div class="page-header">
         <div class="page-title">Resumen</div>
-        <div id="fecha-hoy" style="font-size:12px;color:var(--muted)"></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div id="fecha-hoy" style="font-size:12px;color:var(--muted)"></div>
+          <button class="btn" onclick="exportarExcel()">&#11015; Exportar todo</button>
+          <label class="btn" style="cursor:pointer;margin:0">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(event)"></label>
+        </div>
       </div>
       <div class="metrics" id="dash-metrics"></div>
       <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin-bottom:10px">Actividad reciente</div>
-      <div class="card" style="padding:0 16px">
-        <div id="dash-activity" class="activity-list"></div>
-      </div>
+      <div class="card" style="padding:0 16px"><div id="dash-activity"></div></div>
     </div>
 
-    <!-- CLIENTES -->
     <div class="page" id="page-clientes">
-      <div class="page-header">
-        <div class="page-title">Clientes</div>
-        <button class="btn btn-primary" onclick="openModal('cli')">+ Nuevo cliente</button>
-      </div>
+      <div class="page-header"><div class="page-title">Clientes</div><button class="btn btn-primary" onclick="openModal('cli')">+ Nuevo cliente</button></div>
       <div class="toolbar">
         <input id="cli-search" placeholder="Buscar por nombre, email..." oninput="renderClientes()">
-      
-          <button class="btn" onclick="exportarHoja('clientes')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
-          <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'clientes')"></label>
-        </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Notas</th><th></th></tr></thead>
-            <tbody id="cli-tbody"></tbody>
-          </table>
-        </div>
+        <button class="btn" onclick="exportarHoja('clientes')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
+        <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'clientes')"></label>
       </div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Notas</th><th></th></tr></thead><tbody id="cli-tbody"></tbody></table></div></div>
     </div>
 
-    <!-- VENTAS -->
     <div class="page" id="page-ventas">
-      <div class="page-header">
-        <div class="page-title">Ventas</div>
-        <button class="btn btn-primary" onclick="openModal('ven')">+ Nueva venta</button>
-      </div>
+      <div class="page-header"><div class="page-title">Ventas</div><button class="btn btn-primary" onclick="openModal('ven')">+ Nueva venta</button></div>
       <div class="toolbar">
         <input id="ven-search" placeholder="Buscar..." oninput="renderVentas()">
-        <select id="ven-filter" onchange="renderVentas()">
-          <option value="">Todos los estados</option>
-          <option>Pendiente</option><option>Cobrada</option><option>Cancelada</option>
-        </select>
-      
-          <button class="btn" onclick="exportarHoja('ventas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
-          <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ventas')"></label>
-        </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Cliente</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
-            <tbody id="ven-tbody"></tbody>
-          </table>
-        </div>
+        <select id="ven-filter" onchange="renderVentas()"><option value="">Todos los estados</option><option>Pendiente</option><option>Cobrada</option><option>Cancelada</option></select>
+        <button class="btn" onclick="exportarHoja('ventas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
+        <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ventas')"></label>
       </div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody id="ven-tbody"></tbody></table></div></div>
     </div>
 
-    <!-- LEADS -->
     <div class="page" id="page-leads">
-      <div class="page-header">
-        <div class="page-title">Consultas / Leads</div>
-        <button class="btn btn-primary" onclick="openModal('lead')">+ Nueva consulta</button>
-      </div>
+      <div class="page-header"><div class="page-title">Consultas / Leads</div><button class="btn btn-primary" onclick="openModal('lead')">+ Nueva consulta</button></div>
       <div class="toolbar">
         <input id="lead-search" placeholder="Buscar..." oninput="renderLeads()">
-        <select id="lead-filter" onchange="renderLeads()">
-          <option value="">Todos los estados</option>
-          <option>Nuevo</option><option>En seguimiento</option><option>Convertido</option><option>Perdido</option>
-        </select>
-      
-          <button class="btn" onclick="exportarHoja('leads')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
-          <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'leads')"></label>
-        </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Contacto</th><th>Interés</th><th>Canal</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
-            <tbody id="lead-tbody"></tbody>
-          </table>
-        </div>
+        <select id="lead-filter" onchange="renderLeads()"><option value="">Todos los estados</option><option>Nuevo</option><option>En seguimiento</option><option>Convertido</option><option>Perdido</option></select>
+        <button class="btn" onclick="exportarHoja('leads')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
+        <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'leads')"></label>
       </div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Contacto</th><th>Interés</th><th>Canal</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody id="lead-tbody"></tbody></table></div></div>
     </div>
 
-    <!-- COBRANZAS -->
     <div class="page" id="page-cobranzas">
-      <div class="page-header">
-        <div class="page-title">Cobranzas</div>
-        <button class="btn btn-primary" onclick="openModal('cob')">+ Nueva cobranza</button>
-      </div>
+      <div class="page-header"><div class="page-title">Cobranzas</div><button class="btn btn-primary" onclick="openModal('cob')">+ Nueva cobranza</button></div>
       <div class="toolbar">
         <input id="cob-search" placeholder="Buscar..." oninput="renderCobranzas()">
-        <select id="cob-filter" onchange="renderCobranzas()">
-          <option value="">Todos los estados</option>
-          <option>Pendiente</option><option>Pagado</option><option>Vencido</option>
-        </select>
-      
-          <button class="btn" onclick="exportarHoja('cobranzas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
-          <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'cobranzas')"></label>
-        </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Cliente</th><th>Concepto</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead>
-            <tbody id="cob-tbody"></tbody>
-          </table>
-        </div>
+        <select id="cob-filter" onchange="renderCobranzas()"><option value="">Todos los estados</option><option>Pendiente</option><option>Pagado</option><option>Vencido</option></select>
+        <button class="btn" onclick="exportarHoja('cobranzas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
+        <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'cobranzas')"></label>
       </div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Concepto</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead><tbody id="cob-tbody"></tbody></table></div></div>
     </div>
 
-    <!-- OFERTAS -->
     <div class="page" id="page-ofertas">
-      <div class="page-header">
-        <div class="page-title">Ofertas / Presupuestos</div>
-        <button class="btn btn-primary" onclick="openModal('of')">+ Nueva oferta</button>
-      </div>
+      <div class="page-header"><div class="page-title">Ofertas / Presupuestos</div><button class="btn btn-primary" onclick="openModal('of')">+ Nueva oferta</button></div>
       <div class="toolbar">
         <input id="of-search" placeholder="Buscar..." oninput="renderOfertas()">
-        <select id="of-filter" onchange="renderOfertas()">
-          <option value="">Todos los estados</option>
-          <option>Borrador</option><option>Enviada</option><option>Aceptada</option><option>Rechazada</option>
-        </select>
-      
-          <button class="btn" onclick="exportarHoja('ofertas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
-          <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ofertas')"></label>
-        </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Cliente</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
-            <tbody id="of-tbody"></tbody>
-          </table>
-        </div>
+        <select id="of-filter" onchange="renderOfertas()"><option value="">Todos los estados</option><option>Borrador</option><option>Enviada</option><option>Aceptada</option><option>Rechazada</option></select>
+        <button class="btn" onclick="exportarHoja('ofertas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
+        <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ofertas')"></label>
       </div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody id="of-tbody"></tbody></table></div></div>
     </div>
-
   </main>
 </div>
 
-<!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
-  <div class="modal" id="modal-box">
-    <div id="modal-content"></div>
-  </div>
+  <div class="modal" id="modal-box"><div id="modal-content"></div></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const DB = { clientes:[], ventas:[], leads:[], cobranzas:[], ofertas:[] };
+const CLIENT_ID = '60259606547-k4qmdn827n6tjkvm5k5053hp6dfmqboq.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE = 'crm-minegocio-data.json';
 const STORE_KEY = 'crm_minegocio_v1';
 
-function save() { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); }
-function load() {
-  try {
-    const d = localStorage.getItem(STORE_KEY);
-    if (d) { const p = JSON.parse(d); Object.keys(DB).forEach(k => { if(p[k]) DB[k] = p[k]; }); }
-  } catch(e) {}
+const DB = { clientes:[], ventas:[], leads:[], cobranzas:[], ofertas:[] };
+let driveFileId=null, accessToken=null, saveTimer=null, usingDrive=false;
+
+// GOOGLE DRIVE AUTH
+function loadGSI() {
+  return new Promise(res => {
+    if (window.google && google.accounts) { res(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = res; document.head.appendChild(s);
+  });
+}
+async function loginGoogle() {
+  await loadGSI();
+  const tc = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID, scope: SCOPES,
+    callback: async (r) => {
+      if (r.error) { alert('Error: ' + r.error); return; }
+      accessToken = r.access_token; usingDrive = true;
+      setStatus('syncing');
+      await loadFromDrive();
+      hideLogin(); renderAll();
+    }
+  });
+  tc.requestAccessToken();
+}
+function skipLogin() { usingDrive=false; loadLocal(); hideLogin(); setStatus('off'); renderAll(); }
+function hideLogin() { document.getElementById('login-screen').classList.remove('visible'); }
+function setStatus(s) {
+  const dot=document.getElementById('drive-dot'), txt=document.getElementById('drive-status');
+  dot.className='drive-dot';
+  if(s==='ok'){dot.classList.add('ok');txt.textContent='Drive sincronizado';}
+  else if(s==='syncing'){dot.classList.add('warn');txt.textContent='Sincronizando...';}
+  else if(s==='error'){dot.classList.add('warn');txt.textContent='Error al guardar';}
+  else{dot.classList.add('off');txt.textContent='Solo local';}
 }
 
-function today() { return new Date().toISOString().slice(0,10); }
-function fmt(d) { if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
-function money(v) { return '$' + (parseFloat(v)||0).toLocaleString('es-AR'); }
+// DRIVE API
+async function driveReq(url, opts={}) {
+  const r = await fetch(url, {...opts, headers:{'Authorization':'Bearer '+accessToken,...(opts.headers||{})}});
+  if(r.status===401){accessToken=null;usingDrive=false;setStatus('off');return null;}
+  return r;
+}
+async function findFile() {
+  const r = await driveReq(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILE}'&fields=files(id)`);
+  if(!r) return null;
+  const d = await r.json();
+  return d.files&&d.files.length>0 ? d.files[0].id : null;
+}
+async function loadFromDrive() {
+  try {
+    driveFileId = await findFile();
+    if(!driveFileId){loadLocal();setStatus('ok');return;}
+    const r = await driveReq(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`);
+    if(!r) return;
+    const d = await r.json();
+    Object.keys(DB).forEach(k=>{if(d[k])DB[k]=d[k];});
+    setStatus('ok');
+  } catch(e) { loadLocal(); setStatus('error'); }
+}
+async function saveToDrive() {
+  if(!accessToken||!usingDrive){saveLocal();return;}
+  setStatus('syncing');
+  try {
+    const body = JSON.stringify(DB);
+    if(driveFileId) {
+      await driveReq(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,
+        {method:'PATCH',headers:{'Content-Type':'application/json'},body});
+    } else {
+      const b='crmb', meta=JSON.stringify({name:DRIVE_FILE,parents:['appDataFolder']});
+      const mp = `--${b}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
+      const r = await driveReq('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&spaces=appDataFolder',
+        {method:'POST',headers:{'Content-Type':`multipart/related; boundary=${b}`},body:mp});
+      if(r){const d=await r.json();driveFileId=d.id;}
+    }
+    saveLocal(); setStatus('ok');
+  } catch(e) { saveLocal(); setStatus('error'); }
+}
 
-const BADGE = {
-  'Cobrada':'b-green','Pagado':'b-green','Aceptada':'b-green','Convertido':'b-green',
-  'Pendiente':'b-yellow','En seguimiento':'b-yellow','Enviada':'b-blue','Nuevo':'b-blue',
-  'Cancelada':'b-red','Vencido':'b-red','Perdido':'b-red','Rechazada':'b-red',
-  'Borrador':'b-gray'
-};
-function badge(s) { return `<span class="badge ${BADGE[s]||'b-gray'}">${s}</span>`; }
+// LOCAL
+function saveLocal(){try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){}}
+function loadLocal(){try{const d=localStorage.getItem(STORE_KEY);if(d){const p=JSON.parse(d);Object.keys(DB).forEach(k=>{if(p[k])DB[k]=p[k];});}}catch(e){}}
+function save(){saveLocal();if(usingDrive){clearTimeout(saveTimer);saveTimer=setTimeout(saveToDrive,1500);}}
 
-const DOT = {
-  'Cobrada':'dot-green','Pagado':'dot-green','Aceptada':'dot-green','Convertido':'dot-green',
-  'Pendiente':'dot-yellow','En seguimiento':'dot-yellow','Enviada':'dot-blue','Nuevo':'dot-blue',
-  'Cancelada':'dot-red','Vencido':'dot-red','Perdido':'dot-red','Rechazada':'dot-red',
-  'Borrador':'dot-gray'
-};
+// HELPERS
+function today(){return new Date().toISOString().slice(0,10);}
+function fmt(d){if(!d)return '—';const [y,m,dd]=d.split('-');return `${dd}/${m}/${y}`;}
+function money(v){return '$'+(parseFloat(v)||0).toLocaleString('es-AR');}
+const BADGE={'Cobrada':'b-green','Pagado':'b-green','Aceptada':'b-green','Convertido':'b-green','Pendiente':'b-yellow','En seguimiento':'b-yellow','Enviada':'b-blue','Nuevo':'b-blue','Cancelada':'b-red','Vencido':'b-red','Perdido':'b-red','Rechazada':'b-red','Borrador':'b-gray'};
+function badge(s){return `<span class="badge ${BADGE[s]||'b-gray'}">${s}</span>`;}
+const DOT={'Cobrada':'dot-green','Pagado':'dot-green','Aceptada':'dot-green','Convertido':'dot-green','Pendiente':'dot-yellow','En seguimiento':'dot-yellow','Enviada':'dot-blue','Nuevo':'dot-blue','Cancelada':'dot-red','Vencido':'dot-red','Perdido':'dot-red','Rechazada':'dot-red','Borrador':'dot-gray'};
 
 // NAV
-document.getElementById('nav').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-page]');
-  if (!btn) return;
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + btn.dataset.page).classList.add('active');
-  renderAll();
+document.getElementById('nav').addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-page]');if(!btn)return;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+btn.dataset.page).classList.add('active');renderAll();
 });
 
-// DASHBOARD
-function renderDashboard() {
-  const hoy = new Date();
-  document.getElementById('fecha-hoy').textContent = hoy.toLocaleDateString('es-AR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-  const totalVentas = DB.ventas.filter(v=>v.estado==='Cobrada').reduce((a,v)=>a+(parseFloat(v.monto)||0),0);
-  const pendCob = DB.cobranzas.filter(c=>c.estado==='Pendiente'||c.estado==='Vencido').reduce((a,c)=>a+(parseFloat(c.monto)||0),0);
-  const leadsActivos = DB.leads.filter(l=>l.estado==='Nuevo'||l.estado==='En seguimiento').length;
-  const vencidas = DB.cobranzas.filter(c=>c.estado==='Vencido').length;
-  document.getElementById('dash-metrics').innerHTML = `
-    <div class="metric-card"><div class="m-label">Ventas cobradas</div><div class="m-val">${money(totalVentas)}</div><div class="m-sub">${DB.ventas.filter(v=>v.estado==='Cobrada').length} registros</div></div>
-    <div class="metric-card"><div class="m-label">Por cobrar</div><div class="m-val">${money(pendCob)}</div><div class="m-sub">${vencidas} vencidas</div></div>
-    <div class="metric-card"><div class="m-label">Leads activos</div><div class="m-val">${leadsActivos}</div><div class="m-sub">en seguimiento</div></div>
+// RENDER
+function renderDashboard(){
+  const hoy=new Date();
+  document.getElementById('fecha-hoy').textContent=hoy.toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const tv=DB.ventas.filter(v=>v.estado==='Cobrada').reduce((a,v)=>a+(parseFloat(v.monto)||0),0);
+  const pc=DB.cobranzas.filter(c=>c.estado==='Pendiente'||c.estado==='Vencido').reduce((a,c)=>a+(parseFloat(c.monto)||0),0);
+  const la=DB.leads.filter(l=>l.estado==='Nuevo'||l.estado==='En seguimiento').length;
+  const vc=DB.cobranzas.filter(c=>c.estado==='Vencido').length;
+  document.getElementById('dash-metrics').innerHTML=`
+    <div class="metric-card"><div class="m-label">Ventas cobradas</div><div class="m-val">${money(tv)}</div><div class="m-sub">${DB.ventas.filter(v=>v.estado==='Cobrada').length} registros</div></div>
+    <div class="metric-card"><div class="m-label">Por cobrar</div><div class="m-val">${money(pc)}</div><div class="m-sub">${vc} vencidas</div></div>
+    <div class="metric-card"><div class="m-label">Leads activos</div><div class="m-val">${la}</div><div class="m-sub">en seguimiento</div></div>
     <div class="metric-card"><div class="m-label">Clientes</div><div class="m-val">${DB.clientes.length}</div><div class="m-sub">registrados</div></div>
-    <div class="metric-card"><div class="m-label">Ofertas enviadas</div><div class="m-val">${DB.ofertas.filter(o=>o.estado==='Enviada').length}</div><div class="m-sub">esperando respuesta</div></div>
-  `;
-  const all = [
-    ...DB.ventas.map(v=>({tipo:'Venta',desc:v.descripcion||'Sin descripción',cliente:v.cliente,estado:v.estado,fecha:v.fecha})),
-    ...DB.leads.map(l=>({tipo:'Consulta',desc:l.interes||'Sin detalle',cliente:l.contacto,estado:l.estado,fecha:l.fecha})),
-    ...DB.cobranzas.map(c=>({tipo:'Cobranza',desc:c.concepto||'Sin concepto',cliente:c.cliente,estado:c.estado,fecha:c.vencimiento})),
-    ...DB.ofertas.map(o=>({tipo:'Oferta',desc:o.descripcion||'Sin descripción',cliente:o.cliente,estado:o.estado,fecha:o.fecha})),
-  ].filter(a=>a.fecha).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,12);
-  document.getElementById('dash-activity').innerHTML = all.length ? all.map(a=>`
-    <div class="activity-item">
-      <div class="activity-dot ${DOT[a.estado]||'dot-gray'}"></div>
-      <div class="activity-body">
-        <div class="a-main"><strong>${a.tipo}</strong> — ${a.desc}${a.cliente?' · '+a.cliente:''}</div>
-        <div class="a-sub">${badge(a.estado)} &nbsp; ${fmt(a.fecha)}</div>
-      </div>
-    </div>`).join('') : '<div class="empty-state"><div class="emo">◌</div>Sin actividad todavía. Empezá cargando tus clientes.</div>';
+    <div class="metric-card"><div class="m-label">Ofertas enviadas</div><div class="m-val">${DB.ofertas.filter(o=>o.estado==='Enviada').length}</div><div class="m-sub">esperando respuesta</div></div>`;
+  const all=[
+    ...DB.ventas.map(v=>({t:'Venta',d:v.descripcion||'Sin descripción',c:v.cliente,e:v.estado,f:v.fecha})),
+    ...DB.leads.map(l=>({t:'Consulta',d:l.interes||'Sin detalle',c:l.contacto,e:l.estado,f:l.fecha})),
+    ...DB.cobranzas.map(x=>({t:'Cobranza',d:x.concepto||'Sin concepto',c:x.cliente,e:x.estado,f:x.vencimiento})),
+    ...DB.ofertas.map(o=>({t:'Oferta',d:o.descripcion||'Sin descripción',c:o.cliente,e:o.estado,f:o.fecha})),
+  ].filter(a=>a.f).sort((a,b)=>b.f.localeCompare(a.f)).slice(0,12);
+  document.getElementById('dash-activity').innerHTML=all.length?all.map(a=>`
+    <div class="activity-item"><div class="activity-dot ${DOT[a.e]||'dot-gray'}"></div>
+    <div class="activity-body"><div class="a-main"><strong>${a.t}</strong> — ${a.d}${a.c?' · '+a.c:''}</div>
+    <div class="a-sub">${badge(a.e)} &nbsp; ${fmt(a.f)}</div></div></div>`).join('')
+    :'<div class="empty-state"><div class="emo">◌</div>Sin actividad todavía.</div>';
 }
-
-// CLIENTES
-function renderClientes() {
-  const q = (document.getElementById('cli-search').value||'').toLowerCase();
-  const rows = DB.clientes.filter(c => !q || c.nombre.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q));
-  document.getElementById('cli-tbody').innerHTML = rows.length ? rows.map((c,i) =>
-    `<tr><td><strong>${c.nombre}</strong></td><td>${c.tel||'—'}</td><td>${c.email||'—'}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${c.notas||'—'}</td><td><button class="action-btn" onclick="editModal('cli',${i})">Editar</button></td></tr>`
-  ).join('') : `<tr><td colspan="5" class="empty-state"><div class="emo">◉</div>Ningún cliente aún</td></tr>`;
+function renderClientes(){
+  const q=(document.getElementById('cli-search').value||'').toLowerCase();
+  const rows=DB.clientes.filter(c=>!q||c.nombre.toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q));
+  document.getElementById('cli-tbody').innerHTML=rows.length?rows.map((c,i)=>
+    `<tr><td><strong>${c.nombre}</strong></td><td>${c.tel||'—'}</td><td>${c.email||'—'}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${c.notas||'—'}</td><td><button class="action-btn" onclick="editModal('cli',${i})">Editar</button></td></tr>`
+  ).join(''):`<tr><td colspan="5" class="empty-state"><div class="emo">◉</div>Ningún cliente aún</td></tr>`;
 }
-
-// VENTAS
-function renderVentas() {
-  const q = (document.getElementById('ven-search').value||'').toLowerCase();
-  const f = document.getElementById('ven-filter').value;
-  const rows = DB.ventas.filter(v => (!q||(v.cliente+v.descripcion).toLowerCase().includes(q)) && (!f||v.estado===f));
-  document.getElementById('ven-tbody').innerHTML = rows.length ? rows.map((v,i) =>
+function renderVentas(){
+  const q=(document.getElementById('ven-search').value||'').toLowerCase(),f=document.getElementById('ven-filter').value;
+  const rows=DB.ventas.filter(v=>(!q||(v.cliente+v.descripcion).toLowerCase().includes(q))&&(!f||v.estado===f));
+  document.getElementById('ven-tbody').innerHTML=rows.length?rows.map((v,i)=>
     `<tr><td>${v.cliente||'—'}</td><td>${v.descripcion||'—'}</td><td style="font-family:'DM Mono',monospace">${money(v.monto)}</td><td>${badge(v.estado)}</td><td>${fmt(v.fecha)}</td><td><button class="action-btn" onclick="editModal('ven',${i})">Ver</button></td></tr>`
-  ).join('') : `<tr><td colspan="6" class="empty-state"><div class="emo">◎</div>Sin ventas registradas</td></tr>`;
+  ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">◎</div>Sin ventas</td></tr>`;
 }
-
-// LEADS
-function renderLeads() {
-  const q = (document.getElementById('lead-search').value||'').toLowerCase();
-  const f = document.getElementById('lead-filter').value;
-  const rows = DB.leads.filter(l => (!q||(l.contacto+l.interes).toLowerCase().includes(q)) && (!f||l.estado===f));
-  document.getElementById('lead-tbody').innerHTML = rows.length ? rows.map((l,i) =>
+function renderLeads(){
+  const q=(document.getElementById('lead-search').value||'').toLowerCase(),f=document.getElementById('lead-filter').value;
+  const rows=DB.leads.filter(l=>(!q||(l.contacto+l.interes).toLowerCase().includes(q))&&(!f||l.estado===f));
+  document.getElementById('lead-tbody').innerHTML=rows.length?rows.map((l,i)=>
     `<tr><td><strong>${l.contacto}</strong></td><td>${l.interes||'—'}</td><td>${l.canal||'—'}</td><td>${badge(l.estado)}</td><td>${fmt(l.fecha)}</td><td><button class="action-btn" onclick="editModal('lead',${i})">Ver</button></td></tr>`
-  ).join('') : `<tr><td colspan="6" class="empty-state"><div class="emo">◌</div>Sin consultas aún</td></tr>`;
+  ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">◌</div>Sin consultas</td></tr>`;
 }
-
-// COBRANZAS
-function renderCobranzas() {
-  const q = (document.getElementById('cob-search').value||'').toLowerCase();
-  const f = document.getElementById('cob-filter').value;
-  const rows = DB.cobranzas.filter(c => (!q||(c.cliente+c.concepto).toLowerCase().includes(q)) && (!f||c.estado===f));
-  document.getElementById('cob-tbody').innerHTML = rows.length ? rows.map((c,i) =>
+function renderCobranzas(){
+  const q=(document.getElementById('cob-search').value||'').toLowerCase(),f=document.getElementById('cob-filter').value;
+  const rows=DB.cobranzas.filter(c=>(!q||(c.cliente+c.concepto).toLowerCase().includes(q))&&(!f||c.estado===f));
+  document.getElementById('cob-tbody').innerHTML=rows.length?rows.map((c,i)=>
     `<tr><td>${c.cliente||'—'}</td><td>${c.concepto||'—'}</td><td style="font-family:'DM Mono',monospace">${money(c.monto)}</td><td>${fmt(c.vencimiento)}</td><td>${badge(c.estado)}</td><td><button class="action-btn" onclick="editModal('cob',${i})">Ver</button></td></tr>`
-  ).join('') : `<tr><td colspan="6" class="empty-state"><div class="emo">◑</div>Sin cobranzas registradas</td></tr>`;
+  ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">◑</div>Sin cobranzas</td></tr>`;
 }
-
-// OFERTAS
-function renderOfertas() {
-  const q = (document.getElementById('of-search').value||'').toLowerCase();
-  const f = document.getElementById('of-filter').value;
-  const rows = DB.ofertas.filter(o => (!q||(o.cliente+o.descripcion).toLowerCase().includes(q)) && (!f||o.estado===f));
-  document.getElementById('of-tbody').innerHTML = rows.length ? rows.map((o,i) =>
+function renderOfertas(){
+  const q=(document.getElementById('of-search').value||'').toLowerCase(),f=document.getElementById('of-filter').value;
+  const rows=DB.ofertas.filter(o=>(!q||(o.cliente+o.descripcion).toLowerCase().includes(q))&&(!f||o.estado===f));
+  document.getElementById('of-tbody').innerHTML=rows.length?rows.map((o,i)=>
     `<tr><td>${o.cliente||'—'}</td><td>${o.descripcion||'—'}</td><td style="font-family:'DM Mono',monospace">${money(o.monto)}</td><td>${badge(o.estado)}</td><td>${fmt(o.fecha)}</td><td><button class="action-btn" onclick="editModal('of',${i})">Ver</button></td></tr>`
-  ).join('') : `<tr><td colspan="6" class="empty-state"><div class="emo">◐</div>Sin ofertas registradas</td></tr>`;
+  ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">◐</div>Sin ofertas</td></tr>`;
 }
-
-function renderAll() { renderDashboard(); renderClientes(); renderVentas(); renderLeads(); renderCobranzas(); renderOfertas(); }
+function renderAll(){renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderOfertas();}
 
 // MODAL
-function cliOpts(sel='') {
-  return '<option value="">— Sin cliente —</option>' + DB.clientes.map(c=>`<option ${c.nombre===sel?'selected':''}>${c.nombre}</option>`).join('');
-}
-
-const FORMS = {
-  cli: (d={}) => `
-    <h3>${d.nombre?'Editar cliente':'Nuevo cliente'}</h3>
+function cliOpts(sel=''){return '<option value="">— Sin cliente —</option>'+DB.clientes.map(c=>`<option ${c.nombre===sel?'selected':''}>${c.nombre}</option>`).join('');}
+const FORMS={
+  cli:(d={})=>`<h3>${d.nombre?'Editar cliente':'Nuevo cliente'}</h3>
     <div class="form-row"><label>Nombre *</label><input id="f-nombre" value="${d.nombre||''}" placeholder="Nombre o razón social"></div>
-    <div class="form-row"><label>Teléfono</label><input id="f-tel" value="${d.tel||''}" placeholder="Ej: 343-4XXXXXX"></div>
+    <div class="form-row"><label>Teléfono</label><input id="f-tel" value="${d.tel||''}" placeholder="343-4XXXXXX"></div>
     <div class="form-row"><label>Email</label><input id="f-email" value="${d.email||''}" placeholder="correo@ejemplo.com"></div>
     <div class="form-row"><label>Notas</label><textarea id="f-notas">${d.notas||''}</textarea></div>`,
-  ven: (d={}) => `
-    <h3>${d._edit!==undefined?'Editar venta':'Nueva venta'}</h3>
+  ven:(d={})=>`<h3>${d._edit!==undefined?'Editar venta':'Nueva venta'}</h3>
     <div class="form-row"><label>Cliente</label><select id="f-cli">${cliOpts(d.cliente)}</select></div>
-    <div class="form-row"><label>Descripción</label><input id="f-desc" value="${d.descripcion||''}" placeholder="Producto o servicio vendido"></div>
+    <div class="form-row"><label>Descripción</label><input id="f-desc" value="${d.descripcion||''}" placeholder="Producto o servicio"></div>
     <div class="form-row"><label>Monto ($)</label><input id="f-monto" type="number" value="${d.monto||''}" placeholder="0"></div>
     <div class="form-row"><label>Estado</label><select id="f-est"><option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option><option ${d.estado==='Cobrada'?'selected':''}>Cobrada</option><option ${d.estado==='Cancelada'?'selected':''}>Cancelada</option></select></div>
     <div class="form-row"><label>Fecha</label><input id="f-fecha" type="date" value="${d.fecha||today()}"></div>
     <div class="form-row"><label>Notas</label><textarea id="f-notas">${d.notas||''}</textarea></div>`,
-  lead: (d={}) => `
-    <h3>${d._edit!==undefined?'Editar consulta':'Nueva consulta / Lead'}</h3>
+  lead:(d={})=>`<h3>${d._edit!==undefined?'Editar consulta':'Nueva consulta / Lead'}</h3>
     <div class="form-row"><label>Contacto *</label><input id="f-cont" value="${d.contacto||''}" placeholder="Nombre o empresa"></div>
-    <div class="form-row"><label>¿Qué busca?</label><input id="f-int" value="${d.interes||''}" placeholder="Producto, servicio, pregunta..."></div>
-    <div class="form-row"><label>Canal de origen</label><select id="f-canal"><option ${d.canal==='WhatsApp'?'selected':''}>WhatsApp</option><option ${d.canal==='Instagram'?'selected':''}>Instagram</option><option ${d.canal==='Facebook'?'selected':''}>Facebook</option><option ${d.canal==='Referido'?'selected':''}>Referido</option><option ${d.canal==='Web'?'selected':''}>Web</option><option ${d.canal==='Teléfono'?'selected':''}>Teléfono</option><option ${d.canal==='Presencial'?'selected':''}>Presencial</option><option ${d.canal==='Otro'?'selected':''}>Otro</option></select></div>
+    <div class="form-row"><label>¿Qué busca?</label><input id="f-int" value="${d.interes||''}" placeholder="Producto, servicio..."></div>
+    <div class="form-row"><label>Canal</label><select id="f-canal"><option ${d.canal==='WhatsApp'?'selected':''}>WhatsApp</option><option ${d.canal==='Instagram'?'selected':''}>Instagram</option><option ${d.canal==='Facebook'?'selected':''}>Facebook</option><option ${d.canal==='Referido'?'selected':''}>Referido</option><option ${d.canal==='Web'?'selected':''}>Web</option><option ${d.canal==='Teléfono'?'selected':''}>Teléfono</option><option ${d.canal==='Presencial'?'selected':''}>Presencial</option><option ${d.canal==='Otro'?'selected':''}>Otro</option></select></div>
     <div class="form-row"><label>Estado</label><select id="f-est"><option ${d.estado==='Nuevo'?'selected':''}>Nuevo</option><option ${d.estado==='En seguimiento'?'selected':''}>En seguimiento</option><option ${d.estado==='Convertido'?'selected':''}>Convertido</option><option ${d.estado==='Perdido'?'selected':''}>Perdido</option></select></div>
     <div class="form-row"><label>Fecha</label><input id="f-fecha" type="date" value="${d.fecha||today()}"></div>
     <div class="form-row"><label>Notas</label><textarea id="f-notas">${d.notas||''}</textarea></div>`,
-  cob: (d={}) => `
-    <h3>${d._edit!==undefined?'Editar cobranza':'Nueva cobranza'}</h3>
+  cob:(d={})=>`<h3>${d._edit!==undefined?'Editar cobranza':'Nueva cobranza'}</h3>
     <div class="form-row"><label>Cliente</label><select id="f-cli">${cliOpts(d.cliente)}</select></div>
-    <div class="form-row"><label>Concepto</label><input id="f-conc" value="${d.concepto||''}" placeholder="Factura Nro, cuota, servicio..."></div>
+    <div class="form-row"><label>Concepto</label><input id="f-conc" value="${d.concepto||''}" placeholder="Factura Nro, cuota..."></div>
     <div class="form-row"><label>Monto ($)</label><input id="f-monto" type="number" value="${d.monto||''}" placeholder="0"></div>
-    <div class="form-row"><label>Fecha de vencimiento</label><input id="f-venc" type="date" value="${d.vencimiento||today()}"></div>
+    <div class="form-row"><label>Vencimiento</label><input id="f-venc" type="date" value="${d.vencimiento||today()}"></div>
     <div class="form-row"><label>Estado</label><select id="f-est"><option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option><option ${d.estado==='Pagado'?'selected':''}>Pagado</option><option ${d.estado==='Vencido'?'selected':''}>Vencido</option></select></div>
     <div class="form-row"><label>Notas</label><textarea id="f-notas">${d.notas||''}</textarea></div>`,
-  of: (d={}) => `
-    <h3>${d._edit!==undefined?'Editar oferta':'Nueva oferta / Presupuesto'}</h3>
+  of:(d={})=>`<h3>${d._edit!==undefined?'Editar oferta':'Nueva oferta / Presupuesto'}</h3>
     <div class="form-row"><label>Cliente</label><select id="f-cli">${cliOpts(d.cliente)}</select></div>
-    <div class="form-row"><label>Descripción</label><input id="f-desc" value="${d.descripcion||''}" placeholder="Detalle de la oferta o presupuesto"></div>
+    <div class="form-row"><label>Descripción</label><input id="f-desc" value="${d.descripcion||''}" placeholder="Detalle de la oferta"></div>
     <div class="form-row"><label>Monto ($)</label><input id="f-monto" type="number" value="${d.monto||''}" placeholder="0"></div>
     <div class="form-row"><label>Estado</label><select id="f-est"><option ${d.estado==='Borrador'?'selected':''}>Borrador</option><option ${d.estado==='Enviada'?'selected':''}>Enviada</option><option ${d.estado==='Aceptada'?'selected':''}>Aceptada</option><option ${d.estado==='Rechazada'?'selected':''}>Rechazada</option></select></div>
     <div class="form-row"><label>Fecha</label><input id="f-fecha" type="date" value="${d.fecha||today()}"></div>
     <div class="form-row"><label>Notas</label><textarea id="f-notas">${d.notas||''}</textarea></div>`
 };
-
-let _currentType = null, _currentIdx = -1;
-
-function openModal(type, data={}) {
-  _currentType = type; _currentIdx = -1;
-  document.getElementById('modal-content').innerHTML = FORMS[type](data) + footer(false);
-  document.getElementById('modal-overlay').classList.add('open');
+let _ct=null,_ci=-1;
+function openModal(t,data={}){_ct=t;_ci=-1;document.getElementById('modal-content').innerHTML=FORMS[t](data)+footer(false);document.getElementById('modal-overlay').classList.add('open');}
+function editModal(t,i){_ct=t;_ci=i;const col={cli:'clientes',ven:'ventas',lead:'leads',cob:'cobranzas',of:'ofertas'}[t];const d={...DB[col][i],_edit:true};document.getElementById('modal-content').innerHTML=FORMS[t](d)+footer(true);document.getElementById('modal-overlay').classList.add('open');}
+function footer(e){return `<div class="modal-footer">${e?'<div style="margin-right:auto"><button class="btn btn-danger" onclick="deleteRecord()">Eliminar</button></div>':''}<button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveRecord()">Guardar</button></div>`;}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');renderAll();}
+function handleOverlayClick(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+function g(id){const el=document.getElementById(id);return el?el.value:'';}
+function saveRecord(){
+  const t=_ct;let obj={};
+  if(t==='cli'){const n=g('f-nombre').trim();if(!n){alert('El nombre es obligatorio');return;}obj={nombre:n,tel:g('f-tel'),email:g('f-email'),notas:g('f-notas')};if(_ci<0)DB.clientes.push(obj);else DB.clientes[_ci]=obj;}
+  else if(t==='ven'){obj={cliente:g('f-cli'),descripcion:g('f-desc'),monto:g('f-monto'),estado:g('f-est'),fecha:g('f-fecha'),notas:g('f-notas')};if(_ci<0)DB.ventas.push(obj);else DB.ventas[_ci]=obj;}
+  else if(t==='lead'){const c=g('f-cont').trim();if(!c){alert('El contacto es obligatorio');return;}obj={contacto:c,interes:g('f-int'),canal:g('f-canal'),estado:g('f-est'),fecha:g('f-fecha'),notas:g('f-notas')};if(_ci<0)DB.leads.push(obj);else DB.leads[_ci]=obj;}
+  else if(t==='cob'){obj={cliente:g('f-cli'),concepto:g('f-conc'),monto:g('f-monto'),vencimiento:g('f-venc'),estado:g('f-est'),notas:g('f-notas')};if(_ci<0)DB.cobranzas.push(obj);else DB.cobranzas[_ci]=obj;}
+  else if(t==='of'){obj={cliente:g('f-cli'),descripcion:g('f-desc'),monto:g('f-monto'),estado:g('f-est'),fecha:g('f-fecha'),notas:g('f-notas')};if(_ci<0)DB.ofertas.push(obj);else DB.ofertas[_ci]=obj;}
+  save();closeModal();
 }
+function deleteRecord(){if(!confirm('¿Eliminar este registro?'))return;const col={cli:'clientes',ven:'ventas',lead:'leads',cob:'cobranzas',of:'ofertas'}[_ct];DB[col].splice(_ci,1);save();closeModal();}
 
-function editModal(type, idx) {
-  _currentType = type; _currentIdx = idx;
-  const col = {cli:'clientes',ven:'ventas',lead:'leads',cob:'cobranzas',of:'ofertas'}[type];
-  const d = {...DB[col][idx], _edit: true};
-  document.getElementById('modal-content').innerHTML = FORMS[type](d) + footer(true);
-  document.getElementById('modal-overlay').classList.add('open');
-}
-
-function footer(isEdit) {
-  return `<div class="modal-footer">
-    ${isEdit ? `<div class="left"><button class="btn btn-danger" onclick="deleteRecord()">Eliminar</button></div>` : ''}
-    <button class="btn" onclick="closeModal()">Cancelar</button>
-    <button class="btn btn-primary" onclick="saveRecord()">Guardar</button>
-  </div>`;
-}
-
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  renderAll();
-}
-
-function handleOverlayClick(e) { if(e.target === document.getElementById('modal-overlay')) closeModal(); }
-
-function g(id) { const el = document.getElementById(id); return el ? el.value : ''; }
-
-function saveRecord() {
-  const t = _currentType;
-  let obj = {};
-  if(t==='cli') {
-    const n = g('f-nombre').trim();
-    if(!n) { alert('El nombre es obligatorio'); return; }
-    obj = { nombre:n, tel:g('f-tel'), email:g('f-email'), notas:g('f-notas') };
-    if(_currentIdx<0) DB.clientes.push(obj); else DB.clientes[_currentIdx]=obj;
-  } else if(t==='ven') {
-    obj = { cliente:g('f-cli'), descripcion:g('f-desc'), monto:g('f-monto'), estado:g('f-est'), fecha:g('f-fecha'), notas:g('f-notas') };
-    if(_currentIdx<0) DB.ventas.push(obj); else DB.ventas[_currentIdx]=obj;
-  } else if(t==='lead') {
-    const c = g('f-cont').trim();
-    if(!c) { alert('El contacto es obligatorio'); return; }
-    obj = { contacto:c, interes:g('f-int'), canal:g('f-canal'), estado:g('f-est'), fecha:g('f-fecha'), notas:g('f-notas') };
-    if(_currentIdx<0) DB.leads.push(obj); else DB.leads[_currentIdx]=obj;
-  } else if(t==='cob') {
-    obj = { cliente:g('f-cli'), concepto:g('f-conc'), monto:g('f-monto'), vencimiento:g('f-venc'), estado:g('f-est'), notas:g('f-notas') };
-    if(_currentIdx<0) DB.cobranzas.push(obj); else DB.cobranzas[_currentIdx]=obj;
-  } else if(t==='of') {
-    obj = { cliente:g('f-cli'), descripcion:g('f-desc'), monto:g('f-monto'), estado:g('f-est'), fecha:g('f-fecha'), notas:g('f-notas') };
-    if(_currentIdx<0) DB.ofertas.push(obj); else DB.ofertas[_currentIdx]=obj;
-  }
-  save(); closeModal();
-}
-
-function deleteRecord() {
-  if(!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
-  const col = {cli:'clientes',ven:'ventas',lead:'leads',cob:'cobranzas',of:'ofertas'}[_currentType];
-  DB[col].splice(_currentIdx, 1);
-  save(); closeModal();
-}
-
-load(); renderAll();
-
-function exportarExcel() {
-  const wb = XLSX.utils.book_new();
-  const sheets = [
-    { name: 'Clientes', data: DB.clientes, cols: ['nombre','tel','email','notas'] },
-    { name: 'Ventas', data: DB.ventas, cols: ['cliente','descripcion','monto','estado','fecha','notas'] },
-    { name: 'Consultas', data: DB.leads, cols: ['contacto','interes','canal','estado','fecha','notas'] },
-    { name: 'Cobranzas', data: DB.cobranzas, cols: ['cliente','concepto','monto','vencimiento','estado','notas'] },
-    { name: 'Ofertas', data: DB.ofertas, cols: ['cliente','descripcion','monto','estado','fecha','notas'] },
-  ];
-  sheets.forEach(s => {
-    const rows = [s.cols, ...s.data.map(r => s.cols.map(c => r[c]||''))];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, s.name);
-  });
-  XLSX.writeFile(wb, 'CRM-MiNegocio-completo.xlsx');
-}
-
-const SHEET_MAP = {
-  clientes: { name:'Clientes', cols:['nombre','tel','email','notas'] },
-  ventas:   { name:'Ventas',   cols:['cliente','descripcion','monto','estado','fecha','notas'] },
-  leads:    { name:'Consultas',cols:['contacto','interes','canal','estado','fecha','notas'] },
-  cobranzas:{ name:'Cobranzas',cols:['cliente','concepto','monto','vencimiento','estado','notas'] },
-  ofertas:  { name:'Ofertas',  cols:['cliente','descripcion','monto','estado','fecha','notas'] },
+// EXCEL
+const SHEET_MAP={
+  clientes:{name:'Clientes',cols:['nombre','tel','email','notas']},
+  ventas:{name:'Ventas',cols:['cliente','descripcion','monto','estado','fecha','notas']},
+  leads:{name:'Consultas',cols:['contacto','interes','canal','estado','fecha','notas']},
+  cobranzas:{name:'Cobranzas',cols:['cliente','concepto','monto','vencimiento','estado','notas']},
+  ofertas:{name:'Ofertas',cols:['cliente','descripcion','monto','estado','fecha','notas']},
 };
-
-function exportarHoja(sec) {
-  const s = SHEET_MAP[sec];
-  const wb = XLSX.utils.book_new();
-  const rows = [s.cols, ...DB[sec].map(r => s.cols.map(c => r[c]||''))];
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws, s.name);
-  XLSX.writeFile(wb, 'CRM-' + s.name + '.xlsx');
-}
-
-function importarHoja(event, sec) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const s = SHEET_MAP[sec];
-  if (!confirm('Esto reemplazará los datos de "' + s.name + '" con los del archivo. ¿Continuar?')) { event.target.value=''; return; }
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const wb = XLSX.read(e.target.result, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      if (rows.length < 2) { alert('El archivo está vacío o no tiene datos.'); return; }
-      DB[sec] = rows.slice(1).filter(r => r.some(c => c !== '' && c !== undefined)).map(r => {
-        const obj = {};
-        s.cols.forEach((col, i) => { obj[col] = r[i] !== undefined ? String(r[i]) : ''; });
-        return obj;
-      });
-      save(); renderAll();
-      alert('Importación exitosa: ' + DB[sec].length + ' registros cargados en ' + s.name + '.');
-    } catch(err) { alert('Error al leer el archivo: ' + err.message); }
-    event.target.value = '';
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function importarExcel(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (!confirm('Esto reemplazará todos los datos actuales. ¿Continuar?')) { event.target.value=''; return; }
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const wb = XLSX.read(e.target.result, { type: 'array' });
-      let imported = 0;
-      Object.entries(SHEET_MAP).forEach(([sec, s]) => {
-        const ws = wb.Sheets[s.name];
-        if (!ws) return;
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-        if (rows.length < 2) return;
-        DB[sec] = rows.slice(1).filter(r => r.some(c => c !== '' && c !== undefined)).map(r => {
-          const obj = {};
-          s.cols.forEach((col, i) => { obj[col] = r[i] !== undefined ? String(r[i]) : ''; });
-          return obj;
-        });
-        imported++;
-      });
-      save(); renderAll();
-      alert('Importación exitosa. ' + imported + ' hojas cargadas.');
-    } catch(err) { alert('Error: ' + err.message); }
-    event.target.value = '';
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-
-
+function exportarExcel(){const wb=XLSX.utils.book_new();Object.entries(SHEET_MAP).forEach(([s,m])=>{const rows=[m.cols,...DB[s].map(r=>m.cols.map(c=>r[c]||''))];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),m.name);});XLSX.writeFile(wb,'CRM-MiNegocio.xlsx');}
+function exportarHoja(sec){const m=SHEET_MAP[sec];const wb=XLSX.utils.book_new();const rows=[m.cols,...DB[sec].map(r=>m.cols.map(c=>r[c]||''))];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),m.name);XLSX.writeFile(wb,'CRM-'+m.name+'.xlsx');}
+function importarHoja(ev,sec){const f=ev.target.files[0];if(!f)return;const m=SHEET_MAP[sec];if(!confirm('Reemplazará "'+m.name+'". ¿Continuar?')){ev.target.value='';return;}const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1});if(rows.length<2){alert('Vacío.');return;}DB[sec]=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==undefined)).map(r=>{const o={};m.cols.forEach((col,i)=>{o[col]=r[i]!==undefined?String(r[i]):''});return o;});save();renderAll();alert('OK: '+DB[sec].length+' registros.');}catch(err){alert('Error: '+err.message);}ev.target.value='';};r.readAsArrayBuffer(f);}
+function importarExcel(ev){const f=ev.target.files[0];if(!f)return;if(!confirm('Reemplazará todos los datos. ¿Continuar?')){ev.target.value='';return;}const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});let n=0;Object.entries(SHEET_MAP).forEach(([sec,m])=>{const ws=wb.Sheets[m.name];if(!ws)return;const rows=XLSX.utils.sheet_to_json(ws,{header:1});if(rows.length<2)return;DB[sec]=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==undefined)).map(r=>{const o={};m.cols.forEach((col,i)=>{o[col]=r[i]!==undefined?String(r[i]):''});return o;});n++;});save();renderAll();alert('OK: '+n+' hojas cargadas.');}catch(err){alert('Error: '+err.message);}ev.target.value='';};r.readAsArrayBuffer(f);}
 </script>
 </body>
 </html>
