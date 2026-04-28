@@ -1,1 +1,0 @@
-Usar para guardar información.
