@@ -30,10 +30,10 @@
   .page{display:none}.page.active{display:block}
   .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px}
   .page-title{font-size:20px;font-weight:600;letter-spacing:-0.4px}
-  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
   .metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
   .metric-card .m-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
-  .metric-card .m-val{font-size:26px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;letter-spacing:-1px}
+  .metric-card .m-val{font-size:24px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;letter-spacing:-1px}
   .metric-card .m-sub{font-size:11px;color:var(--muted);margin-top:3px}
   .toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
   .toolbar input,.toolbar select{padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;background:var(--surface);color:var(--text);outline:none;transition:border 0.15s}
@@ -147,7 +147,7 @@
   <main class="main">
     <div class="page active" id="page-dashboard">
       <div class="page-header">
-        <div class="page-title">Resumen</div>
+        <div class="page-title">Resumen comercial</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div id="fecha-hoy" style="font-size:12px;color:var(--muted)"></div>
           <button class="btn" onclick="exportarExcel()">&#11015; Exportar todo</button>
@@ -173,7 +173,7 @@
       <div class="page-header"><div class="page-title">Ventas</div><button class="btn btn-primary" onclick="openModal('ven')">+ Nueva venta</button></div>
       <div class="toolbar">
         <input id="ven-search" placeholder="Buscar..." oninput="renderVentas()">
-        <select id="ven-filter" onchange="renderVentas()"><option value="">Todos los estados</option><option>Consulta</option><option>En espera</option><option>Vendido</option></select>
+        <select id="ven-filter" onchange="renderVentas()"><option value="">Todos los estados</option><option>Consulta</option><option>Realizada</option></select>
         <button class="btn" onclick="exportarHoja('ventas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
         <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ventas')"></label>
       </div>
@@ -195,11 +195,11 @@
       <div class="page-header"><div class="page-title">Cobranzas</div><button class="btn btn-primary" onclick="openModal('cob')">+ Nueva cobranza</button></div>
       <div class="toolbar">
         <input id="cob-search" placeholder="Buscar..." oninput="renderCobranzas()">
-        <select id="cob-filter" onchange="renderCobranzas()"><option value="">Todos los estados</option><option>Pendiente</option><option>Cobrado</option><option>Vencido</option></select>
+        <select id="cob-filter" onchange="renderCobranzas()"><option value="">Todos los estados</option><option>Pendiente</option><option>Cobro Parcial</option><option>Cobrado</option><option>Vencido</option></select>
         <button class="btn" onclick="exportarHoja('cobranzas')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
         <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'cobranzas')"></label>
       </div>
-      <div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Concepto</th><th>Monto</th><th>Vencimiento</th><th>Estado</th><th></th></tr></thead><tbody id="cob-tbody"></tbody></table></div></div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Concepto</th><th>Total</th><th>Abonado</th><th>Estado</th><th></th></tr></thead><tbody id="cob-tbody"></tbody></table></div></div>
     </div>
 
     <div class="page" id="page-presupuestos">
@@ -339,17 +339,17 @@ function fmt(d){if(!d)return '—';const [y,m,dd]=d.split('-');return `${dd}/${m
 function money(v){return '$'+(parseFloat(v)||0).toLocaleString('es-AR');}
 
 const BADGE={
-  'Vendido':'b-green','Cobrado':'b-green','Aceptada':'b-green','Convertido':'b-green',
+  'Realizada':'b-green','Cobrado':'b-green','Aceptada':'b-green','Convertido':'b-green',
   'En espera':'b-yellow','Pendiente':'b-yellow','En seguimiento':'b-yellow',
-  'Consulta':'b-blue','Enviada':'b-blue','Nuevo':'b-blue',
+  'Consulta':'b-blue','Enviada':'b-blue','Nuevo':'b-blue','Cobro Parcial':'b-blue',
   'Vencido':'b-red','Perdido':'b-red','Rechazada':'b-red',
   'Borrador':'b-gray'
 };
 function badge(s){return `<span class="badge ${BADGE[s]||'b-gray'}">${s}</span>`;}
 const DOT={
-  'Vendido':'dot-green','Cobrado':'dot-green','Aceptada':'dot-green','Convertido':'dot-green',
+  'Realizada':'dot-green','Cobrado':'dot-green','Aceptada':'dot-green','Convertido':'dot-green',
   'En espera':'dot-yellow','Pendiente':'dot-yellow','En seguimiento':'dot-yellow',
-  'Consulta':'dot-blue','Enviada':'dot-blue','Nuevo':'dot-blue',
+  'Consulta':'dot-blue','Enviada':'dot-blue','Nuevo':'dot-blue','Cobro Parcial':'dot-blue',
   'Vencido':'dot-red','Perdido':'dot-red','Rechazada':'dot-red',
   'Borrador':'dot-gray'
 };
@@ -367,26 +367,41 @@ function renderDashboard(){
   const hoy=new Date();
   document.getElementById('fecha-hoy').textContent=hoy.toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   
-  const tv=DB.ventas.filter(v=>v.estado==='Vendido').reduce((a,v)=>a+(parseFloat(v.monto)||0),0);
-  const pc=DB.cobranzas.filter(c=>c.estado==='Pendiente'||c.estado==='Vencido').reduce((a,c)=>a+(parseFloat(c.monto)||0),0);
-  const la=DB.leads.filter(l=>l.estado==='Nuevo'||l.estado==='En seguimiento').length;
-  const vc=DB.cobranzas.filter(c=>c.estado==='Vencido').length;
-  
-  // NUEVA MÉTRICA: Presupuestos Enviados
-  const pe = DB.presupuestos.filter(o=>o.estado==='Enviada').length;
-  const tpe = DB.presupuestos.filter(o=>o.estado==='Enviada').reduce((a,o)=>a+(parseFloat(o.monto)||0),0);
+  let ingresosReales = 0;
+  let porCobrar = 0;
+  let cobrosVencidos = 0;
+
+  // Cruce de datos financiero real
+  DB.cobranzas.forEach(c => {
+     const total = parseFloat(c.total || c.monto) || 0;
+     const cobrado = parseFloat(c.cobrado) || 0;
+     
+     if (c.estado === 'Cobrado') {
+         ingresosReales += (cobrado > 0 ? cobrado : total);
+     } else {
+         ingresosReales += cobrado; // Suma los pagos parciales
+         if (c.estado === 'Pendiente' || c.estado === 'Cobro Parcial' || c.estado === 'Vencido') {
+             porCobrar += (total - cobrado); // Calcula saldo exacto
+         }
+         if (c.estado === 'Vencido') cobrosVencidos++;
+     }
+  });
+
+  const leadsActivos = DB.leads.filter(l=>l.estado==='Nuevo'||l.estado==='En seguimiento').length;
+  const presEnv = DB.presupuestos.filter(o=>o.estado==='Enviada').length;
+  const presMonto = DB.presupuestos.filter(o=>o.estado==='Enviada').reduce((a,o)=>a+(parseFloat(o.monto)||0),0);
 
   document.getElementById('dash-metrics').innerHTML=`
-    <div class="metric-card"><div class="m-label">Ventas cobradas</div><div class="m-val">${money(tv)}</div><div class="m-sub">${DB.ventas.filter(v=>v.estado==='Vendido').length} registros</div></div>
-    <div class="metric-card"><div class="m-label">Por cobrar</div><div class="m-val">${money(pc)}</div><div class="m-sub">${DB.cobranzas.filter(c=>c.estado==='Pendiente'||c.estado==='Vencido').length} facturas pendientes</div></div>
-    <div class="metric-card"><div class="m-label">Presupuestos enviados</div><div class="m-val">${money(tpe)}</div><div class="m-sub">${pe} en seguimiento</div></div>
-    <div class="metric-card"><div class="m-label">Consultas activas</div><div class="m-val">${la}</div><div class="m-sub">En seguimiento</div></div>
-    <div class="metric-card"><div class="m-label">Cobros vencidos</div><div class="m-val" style="color:var(--danger)">${vc}</div><div class="m-sub">Requieren atención</div></div>
+    <div class="metric-card"><div class="m-label">Ingresos Reales</div><div class="m-val">${money(ingresosReales)}</div><div class="m-sub">Dinero ingresado</div></div>
+    <div class="metric-card"><div class="m-label">Pendiente de cobro</div><div class="m-val">${money(porCobrar)}</div><div class="m-sub">Falta cobrar</div></div>
+    <div class="metric-card"><div class="m-label">Presupuestos enviados</div><div class="m-val">${money(presMonto)}</div><div class="m-sub">${presEnv} en seguimiento</div></div>
+    <div class="metric-card"><div class="m-label">Consultas activas</div><div class="m-val">${leadsActivos}</div><div class="m-sub">Leads nuevos</div></div>
+    <div class="metric-card"><div class="m-label">Cobros vencidos</div><div class="m-val" style="color:var(--danger)">${cobrosVencidos}</div><div class="m-sub">Acción requerida</div></div>
   `;
 
   let act=[];
   DB.ventas.slice(0,3).forEach(v=>act.push({d:v.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[v.estado]}"></div><div class="activity-body"><div class="a-main">Venta <strong>${v.cliente}</strong> por ${money(v.monto)}</div><div class="a-sub">${fmt(v.fecha)} - ${v.estado}</div></div></div>`}));
-  DB.cobranzas.slice(0,2).forEach(c=>act.push({d:c.vencimiento,html:`<div class="activity-item"><div class="activity-dot ${DOT[c.estado]}"></div><div class="activity-body"><div class="a-main">Cobranza <strong>${c.cliente}</strong> por ${money(c.monto)}</div><div class="a-sub">Vence: ${fmt(c.vencimiento)} - ${c.estado}</div></div></div>`}));
+  DB.cobranzas.slice(0,2).forEach(c=>act.push({d:c.vencimiento,html:`<div class="activity-item"><div class="activity-dot ${DOT[c.estado]}"></div><div class="activity-body"><div class="a-main">Cobranza <strong>${c.cliente}</strong> (${c.estado})</div><div class="a-sub">Total: ${money(c.total||c.monto)} | Vence: ${fmt(c.vencimiento)}</div></div></div>`}));
   
   act.sort((a,b)=>b.d.localeCompare(a.d));
   document.getElementById('dash-activity').innerHTML=act.length?act.map(a=>a.html).join(''):'<div class="empty-state" style="padding:20px">Sin actividad reciente</div>';
@@ -420,7 +435,7 @@ function renderCobranzas(){
   const q=(document.getElementById('cob-search').value||'').toLowerCase(),f=document.getElementById('cob-filter').value;
   const rows=DB.cobranzas.filter(c=>(!q||(c.cliente+c.concepto).toLowerCase().includes(q))&&(!f||c.estado===f));
   document.getElementById('cob-tbody').innerHTML=rows.length?rows.map((c,i)=>
-    `<tr><td>${c.cliente||'—'}</td><td>${c.concepto||'—'}</td><td style="font-family:'DM Mono',monospace">${money(c.monto)}</td><td>${fmt(c.vencimiento)}</td><td>${badge(c.estado)}</td><td><button class="action-btn" onclick="editModal('cob',${i})">Ver</button></td></tr>`
+    `<tr><td>${c.cliente||'—'}</td><td>${c.concepto||'—'}</td><td style="font-family:'DM Mono',monospace">${money(c.total||c.monto)}</td><td style="font-family:'DM Mono',monospace">${money(c.cobrado)}</td><td>${badge(c.estado)}</td><td><button class="action-btn" onclick="editModal('cob',${i})">Ver</button></td></tr>`
   ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">◑</div>Sin cobranzas</td></tr>`;
 }
 
@@ -450,8 +465,7 @@ const FORMS={
     <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado">
       <option ${d.estado==='Consulta'?'selected':''}>Consulta</option>
-      <option ${d.estado==='En espera'?'selected':''}>En espera</option>
-      <option ${d.estado==='Vendido'?'selected':''}>Vendido</option>
+      <option ${d.estado==='Realizada'?'selected':''}>Realizada</option>
     </select></div>
     <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
 
@@ -470,10 +484,12 @@ const FORMS={
   cob:(d={})=>`<h3>${d.cliente?'Editar cobranza':'Nueva cobranza'}</h3>
     <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
     <div class="form-row"><label>Concepto</label><input id="f-concepto" value="${d.concepto||''}"></div>
-    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}"></div>
+    <div class="form-row"><label>Monto Total *</label><input type="number" id="f-total" value="${d.total||d.monto||''}"></div>
+    <div class="form-row"><label>Monto Abonado (Pago parcial / Seña)</label><input type="number" id="f-cobrado" value="${d.cobrado||''}"></div>
     <div class="form-row"><label>Vencimiento</label><input type="date" id="f-venc" value="${d.vencimiento||today()}"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado">
       <option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option>
+      <option ${d.estado==='Cobro Parcial'?'selected':''}>Cobro Parcial</option>
       <option ${d.estado==='Cobrado'?'selected':''}>Cobrado</option>
       <option ${d.estado==='Vencido'?'selected':''}>Vencido</option>
     </select></div>`,
@@ -530,24 +546,25 @@ function saveForm(){
     obj={cliente:document.getElementById('f-cliente').value,descripcion:document.getElementById('f-desc').value,monto:document.getElementById('f-monto').value,estado:document.getElementById('f-estado').value,fecha:document.getElementById('f-fecha').value};
     if(!obj.cliente)return alert('Cliente requerido');
     
-    // AUTOMATIZACIÓN: Si pasa a "Vendido"
+    // AUTOMATIZACIÓN: Si pasa a "Realizada" genera la cuenta por cobrar
     let oldObj = i!==null ? DB.ventas[i] : null;
-    if((!oldObj || oldObj.estado !== 'Vendido') && obj.estado === 'Vendido') {
+    if((!oldObj || oldObj.estado !== 'Realizada') && obj.estado === 'Realizada') {
        DB.cobranzas.unshift({
          cliente: obj.cliente,
          concepto: obj.descripcion || 'Venta',
-         monto: obj.monto,
+         total: obj.monto,
+         cobrado: 0,
          vencimiento: obj.fecha,
          estado: 'Pendiente'
        });
-       alert('¡Venta completada! Se ha generado un registro "Pendiente" en Cobranzas automáticamente.');
+       alert('¡Venta realizada! Se generó una cuenta por cobrar en estado Pendiente automáticamente.');
     }
 
   } else if(t==='lead'){
     obj={contacto:document.getElementById('f-contacto').value,interes:document.getElementById('f-interes').value,canal:document.getElementById('f-canal').value,estado:document.getElementById('f-estado').value,fecha:document.getElementById('f-fecha').value};
     if(!obj.contacto)return alert('Contacto requerido');
   } else if(t==='cob'){
-    obj={cliente:document.getElementById('f-cliente').value,concepto:document.getElementById('f-concepto').value,monto:document.getElementById('f-monto').value,vencimiento:document.getElementById('f-venc').value,estado:document.getElementById('f-estado').value};
+    obj={cliente:document.getElementById('f-cliente').value,concepto:document.getElementById('f-concepto').value,total:document.getElementById('f-total').value,cobrado:document.getElementById('f-cobrado').value,vencimiento:document.getElementById('f-venc').value,estado:document.getElementById('f-estado').value};
     if(!obj.cliente)return alert('Cliente requerido');
   } else if(t==='pre'){
     obj={cliente:document.getElementById('f-cliente').value,descripcion:document.getElementById('f-desc').value,monto:document.getElementById('f-monto').value,estado:document.getElementById('f-estado').value,fecha:document.getElementById('f-fecha').value};
@@ -565,7 +582,7 @@ const SHEET_MAP={
   clientes:{name:'Clientes',cols:['nombre','tel','email','notas']},
   ventas:{name:'Ventas',cols:['cliente','descripcion','monto','estado','fecha']},
   leads:{name:'Consultas',cols:['contacto','interes','canal','estado','fecha']},
-  cobranzas:{name:'Cobranzas',cols:['cliente','concepto','monto','vencimiento','estado']},
+  cobranzas:{name:'Cobranzas',cols:['cliente','concepto','total','cobrado','vencimiento','estado']},
   presupuestos:{name:'Presupuestos',cols:['cliente','descripcion','monto','estado','fecha']}
 };
 
