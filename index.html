@@ -233,6 +233,15 @@ function generarId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
+// LÓGICA DE BLINDAJE MATEMÁTICO (Evita los 199.999999)
+function parseNum(v) {
+  return Math.round((parseFloat(v) || 0) * 100) / 100;
+}
+function money(v) {
+  let num = parseNum(v);
+  return '$' + num.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
 // GOOGLE DRIVE AUTH
 function loadGSI() {
   return new Promise((res) => {
@@ -341,7 +350,6 @@ function save(){saveLocal();if(usingDrive){clearTimeout(saveTimer);saveTimer=set
 // HELPERS
 function today(){return new Date().toISOString().slice(0,10);}
 function fmt(d){if(!d)return '—';const [y,m,dd]=d.split('-');return `${dd}/${m}/${y}`;}
-function money(v){return '$'+(parseFloat(v)||0).toLocaleString('es-AR');}
 
 const BADGE={
   'Realizada':'b-green','Cobrado':'b-green','Aceptada':'b-green','Convertido':'b-green',
@@ -377,8 +385,9 @@ function renderDashboard(){
   let cobrosVencidos = 0;
 
   DB.cobranzas.forEach(c => {
-     const t = parseFloat(c.total) || parseFloat(c.monto) || 0;
-     const p = parseFloat(c.cobrado) || 0;
+     // ParseNum aplica el blindaje de punto flotante a los cálculos
+     const t = parseNum(c.total) || parseNum(c.monto);
+     const p = parseNum(c.cobrado);
      
      if (c.estado === 'Cobrado') {
          ingresosReales += (p > 0 ? p : t);
@@ -392,7 +401,7 @@ function renderDashboard(){
 
   const leadsActivos = DB.leads.filter(l=>l.estado==='Nuevo'||l.estado==='En seguimiento').length;
   const presEnv = DB.presupuestos.filter(o=>o.estado==='Enviada').length;
-  const presMonto = DB.presupuestos.filter(o=>o.estado==='Enviada').reduce((a,o)=>a+(parseFloat(o.monto)||0),0);
+  const presMonto = DB.presupuestos.filter(o=>o.estado==='Enviada').reduce((a,o)=>a+parseNum(o.monto),0);
 
   document.getElementById('dash-metrics').innerHTML=`
     <div class="metric-card"><div class="m-label">Ingresos Reales</div><div class="m-val">${money(ingresosReales)}</div><div class="m-sub">Dinero ingresado</div></div>
@@ -465,7 +474,7 @@ const FORMS={
   ven:(d={})=>`<h3>${d.cliente?'Editar venta':'Nueva venta'}</h3>
     <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
     <div class="form-row"><label>Descripción</label><input id="f-desc" value="${d.descripcion||''}"></div>
-    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}"></div>
+    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}" step="0.01"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado">
       <option ${d.estado==='Consulta'?'selected':''}>Consulta</option>
       <option ${d.estado==='Realizada'?'selected':''}>Realizada</option>
@@ -487,8 +496,8 @@ const FORMS={
   cob:(d={})=>`<h3>${d.cliente?'Editar cobranza':'Nueva cobranza'}</h3>
     <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
     <div class="form-row"><label>Concepto</label><input id="f-concepto" value="${d.concepto||''}"></div>
-    <div class="form-row"><label>Monto Total *</label><input type="number" id="f-total" value="${d.total||d.monto||''}"></div>
-    <div class="form-row"><label>Monto Abonado (Pago parcial / Seña)</label><input type="number" id="f-cobrado" value="${d.cobrado||''}"></div>
+    <div class="form-row"><label>Monto Total *</label><input type="number" id="f-total" value="${d.total||d.monto||''}" step="0.01"></div>
+    <div class="form-row"><label>Monto Abonado (Pago parcial / Seña)</label><input type="number" id="f-cobrado" value="${d.cobrado||''}" step="0.01"></div>
     <div class="form-row"><label>Vencimiento</label><input type="date" id="f-venc" value="${d.vencimiento||today()}"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado">
       <option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option>
@@ -500,7 +509,7 @@ const FORMS={
   pre:(d={})=>`<h3>${d.cliente?'Editar presupuesto':'Nuevo presupuesto'}</h3>
     <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
     <div class="form-row"><label>Descripción</label><input id="f-desc" value="${d.descripcion||''}"></div>
-    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}"></div>
+    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}" step="0.01"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado">
       <option ${d.estado==='Borrador'?'selected':''}>Borrador</option>
       <option ${d.estado==='Enviada'?'selected':''}>Enviada</option>
@@ -542,7 +551,6 @@ function saveForm(){
   const {t,i}=modalState;
   const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:DB.presupuestos;
   
-  // Extraemos o generamos el ID para el motor relacional
   let obj = i !== null ? { ...list[i] } : { id: generarId() };
   if(i !== null && !obj.id) obj.id = generarId(); 
   
@@ -565,7 +573,6 @@ function saveForm(){
        let cobIdx = DB.cobranzas.findIndex(c => c.ventaId === obj.id);
        
        if (cobIdx === -1) {
-         // No existe: creamos la cobranza y la anclamos con el ventaId
          DB.cobranzas.unshift({
            id: generarId(),
            ventaId: obj.id,
@@ -578,7 +585,6 @@ function saveForm(){
          });
          alert('¡Venta realizada! Se generó y vinculó la cuenta por cobrar automáticamente.');
        } else {
-         // Ya existe: actualizamos total y datos en espejo
          DB.cobranzas[cobIdx].cliente = obj.cliente;
          DB.cobranzas[cobIdx].concepto = obj.descripcion || 'Venta';
          DB.cobranzas[cobIdx].total = obj.monto;
@@ -607,6 +613,29 @@ function saveForm(){
     obj.estado=document.getElementById('f-estado').value;
     obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.cliente)return alert('Cliente requerido');
+
+    // NUEVO: AUTOMATIZACIÓN VINCULADA: Presupuesto <-> Cobranza
+    if(obj.estado === 'Aceptada') {
+       let cobIdx = DB.cobranzas.findIndex(c => c.presupuestoId === obj.id);
+       
+       if (cobIdx === -1) {
+         DB.cobranzas.unshift({
+           id: generarId(),
+           presupuestoId: obj.id,
+           cliente: obj.cliente,
+           concepto: obj.descripcion || 'Presupuesto Aceptado',
+           total: obj.monto,
+           cobrado: 0,
+           vencimiento: obj.fecha,
+           estado: 'Pendiente'
+         });
+         alert('¡Presupuesto Aceptado! Se generó y vinculó la cuenta por cobrar automáticamente.');
+       } else {
+         DB.cobranzas[cobIdx].cliente = obj.cliente;
+         DB.cobranzas[cobIdx].concepto = obj.descripcion || 'Presupuesto Aceptado';
+         DB.cobranzas[cobIdx].total = obj.monto;
+       }
+    }
   }
 
   if(i!==null) list[i]=obj; else list.unshift(obj);
@@ -654,7 +683,7 @@ function importarHoja(ev,sec){
       const rows=XLSX.utils.sheet_to_json(ws,{header:1});
       if(rows.length<2){alert('Vacío.');return;}
       DB[sec]=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==undefined)).map(r=>{
-        const o={id: generarId()}; // Asignamos ID al importar
+        const o={id: generarId()}; 
         m.cols.forEach((col,i)=>{o[col]=r[i]!==undefined?String(r[i]):''});return o;
       });
       save();renderAll();alert('OK: '+DB[sec].length+' registros.');
