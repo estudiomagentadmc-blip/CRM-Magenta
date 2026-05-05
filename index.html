@@ -214,7 +214,7 @@
       <div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody id="pre-tbody"></tbody></table></div></div>
     </div>
 
-    <div class="page" id="page-gastos">
+   <div class="page" id="page-gastos">
       <div class="page-header"><div class="page-title">Gastos / Egresos</div><button class="btn btn-primary" onclick="openModal('gas')">+ Nuevo gasto</button></div>
       <div class="toolbar">
         <input id="gas-search" placeholder="Buscar concepto..." oninput="renderGastos()">
@@ -431,6 +431,35 @@ function renderDashboard(){
   let act=[];
   DB.ventas.slice(0,2).forEach(v=>act.push({d:v.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[v.estado]}"></div><div class="activity-body"><div class="a-main">Venta <strong>${v.cliente}</strong> por ${money(v.monto)}</div><div class="a-sub">${fmt(v.fecha)} - ${v.estado}</div></div></div>`}));
   DB.cobranzas.slice(0,2).forEach(c=>act.push({d:c.vencimiento,html:`<div class="activity-item"><div class="activity-dot ${DOT[c.estado]}"></div><div class="activity-body"><div class="a-main">Cobranza <strong>${c.cliente}</strong> (${c.estado})</div><div class="a-sub">Total: ${money(c.total||c.monto)} | Vence: ${fmt(c.vencimiento)}</div></div></div>`}));
+  DB.gastos.slice(0,2).forEach(g=>act.push({d:g.fecha,html:`<div class="activity-item"><div class="activity-dot b-gray"></div><div class="activity-body"><div class="a-main">Gasto: <strong>${g.concepto}</strong> por ${money(g.monto)}</div><div class="a-sub">${fmt(g.fecha)} - ${g.estado}</div></div></div>`}));
+  
+  act.sort((a,b)=>b.d.localeCompare(a.d));
+  document.getElementById('dash-activity').innerHTML=act.length?act.map(a=>a.html).join(''):'<div class="empty-state" style="padding:20px">Sin actividad reciente</div>';
+     }
+  });
+
+  let gastosOperativos = 0;
+  let compromisosPago = 0;
+  
+  DB.gastos.forEach(g => {
+     const m = parseNum(g.monto);
+     if (g.estado === 'Pagado') gastosOperativos += m;
+     else if (g.estado === 'Pendiente') compromisosPago += m;
+  });
+
+  const cajaReal = ingresosReales - gastosOperativos;
+
+  document.getElementById('dash-metrics').innerHTML=`
+    <div class="metric-card" style="border-left: 3px solid var(--accent)"><div class="m-label">Caja Real (Saldo)</div><div class="m-val">${money(cajaReal)}</div><div class="m-sub">Disponible actual</div></div>
+    <div class="metric-card"><div class="m-label">Ingresos Reales</div><div class="m-val">${money(ingresosReales)}</div><div class="m-sub">Dinero ingresado</div></div>
+    <div class="metric-card"><div class="m-label">Gastos Operativos</div><div class="m-val">${money(gastosOperativos)}</div><div class="m-sub">Dinero egresado</div></div>
+    <div class="metric-card"><div class="m-label">Pendiente de cobro</div><div class="m-val">${money(porCobrar)}</div><div class="m-sub">Falta cobrar a clientes</div></div>
+    <div class="metric-card"><div class="m-label">Compromisos de pago</div><div class="m-val" style="color:var(--warn)">${money(compromisosPago)}</div><div class="m-sub">Gastos por pagar</div></div>
+  `;
+
+  let act=[];
+  DB.ventas.slice(0,2).forEach(v=>act.push({d:v.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[v.estado]}"></div><div class="activity-body"><div class="a-main">Venta <strong>${v.cliente}</strong> por ${money(v.monto)}</div><div class="a-sub">${fmt(v.fecha)} - ${v.estado}</div></div></div>`}));
+  DB.cobranzas.slice(0,2).forEach(c=>act.push({d:c.vencimiento,html:`<div class="activity-item"><div class="activity-dot ${DOT[c.estado]}"></div><div class="activity-body"><div class="a-main">Cobranza <strong>${c.cliente}</strong> (${c.estado})</div><div class="a-sub">Total: ${money(c.total||c.monto)} | Vence: ${fmt(c.vencimiento)}</div></div></div>`}));
   DB.gastos.slice(0,2).forEach(g=>act.push({d:g.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[g.estado]}"></div><div class="activity-body"><div class="a-main">Gasto: <strong>${g.concepto}</strong> por ${money(g.monto)}</div><div class="a-sub">${fmt(g.fecha)} - ${g.estado}</div></div></div>`}));
   
   act.sort((a,b)=>b.d.localeCompare(a.d));
@@ -482,6 +511,14 @@ function renderGastos(){
   const rows=DB.gastos.filter(g=>(!q||(g.concepto).toLowerCase().includes(q))&&(!f||g.estado===f));
   document.getElementById('gas-tbody').innerHTML=rows.length?rows.map((g,i)=>
     `<tr><td>${fmt(g.fecha)}</td><td><strong>${g.concepto}</strong></td><td><span class="badge b-gray">${g.categoria||'Varios'}</span></td><td style="font-family:'DM Mono',monospace">${money(g.monto)}</td><td>${badge(g.estado)}</td><td><button class="action-btn" onclick="editModal('gas',${i})">Ver</button></td></tr>`
+  ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">▼</div>Sin gastos registrados</td></tr>`;
+}
+
+function renderGastos(){
+  const q=(document.getElementById('gas-search').value||'').toLowerCase(),f=document.getElementById('gas-filter').value;
+  const rows=DB.gastos.filter(g=>(!q||(g.concepto).toLowerCase().includes(q))&&(!f||g.estado===f));
+  document.getElementById('gas-tbody').innerHTML=rows.length?rows.map((g,i)=>
+    `<tr><td>${fmt(g.fecha)}</td><td><strong>${g.concepto}</strong></td><td><span class="badge b-gray">${g.categoria||'Varios'}</span></td><td style="font-family:'DM Mono',monospace">${money(g.monto)}</td><td><span class="badge b-gray">${g.estado}</span></td><td><button class="action-btn" onclick="editModal('gas',${i})">Ver</button></td></tr>`
   ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">▼</div>Sin gastos registrados</td></tr>`;
 }
 
@@ -541,7 +578,7 @@ const FORMS={
       <option ${d.estado==='Enviada'?'selected':''}>Enviada</option>
       <option ${d.estado==='Aceptada'?'selected':''}>Aceptada</option>
       <option ${d.estado==='Rechazada'?'selected':''}>Rechazada</option>
-    </select></div>
+   </select></div>
     <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
 
   gas:(d={})=>`<h3>${d.concepto?'Editar gasto':'Nuevo gasto'}</h3>
@@ -576,7 +613,7 @@ function openModal(t){
 
 function editModal(t,i){
   modalState={t,i};
-  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
+ const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
   mContent.innerHTML=FORMS[t](list[i])+`<div class="modal-footer"><button class="btn btn-danger" style="margin-right:auto" onclick="delItem()">Eliminar</button><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveForm()">Guardar</button></div>`;
   overlay.classList.add('open');
 }
@@ -584,7 +621,7 @@ function editModal(t,i){
 function delItem(){
   if(!confirm('¿Eliminar registro?'))return;
   const {t,i}=modalState;
-  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
+ const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
   list.splice(i,1);
   save();renderAll();closeModal();
 }
@@ -647,6 +684,15 @@ function saveForm(){
     obj.estado=document.getElementById('f-estado').value;
     obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.cliente)return alert('Cliente requerido');
+    } else if(t==='gas'){
+    obj.concepto=document.getElementById('f-concepto').value;
+    obj.categoria=document.getElementById('f-categoria').value;
+    obj.monto=document.getElementById('f-monto').value;
+    obj.estado=document.getElementById('f-estado').value;
+    obj.fecha=document.getElementById('f-fecha').value;
+    if(!obj.concepto)return alert('Concepto requerido');
+    if(!obj.monto)return alert('Monto requerido');
+  }
 
     if(obj.estado === 'Aceptada') {
        let cobIdx = DB.cobranzas.findIndex(c => c.presupuestoId === obj.id);
