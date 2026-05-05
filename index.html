@@ -240,12 +240,10 @@ const STORE_KEY = 'crm_minegocio_v1';
 const DB = { clientes:[], ventas:[], leads:[], cobranzas:[], presupuestos:[], gastos:[] };
 let driveFileId=null, accessToken=null, saveTimer=null, usingDrive=false;
 
-// GENERADOR DE ID ÚNICOS (Motor relacional)
 function generarId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
-// LÓGICA DE BLINDAJE MATEMÁTICO (Evita los 199.999999)
 function parseNum(v) {
   return Math.round((parseFloat(v) || 0) * 100) / 100;
 }
@@ -254,7 +252,6 @@ function money(v) {
   return '$' + num.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
-// GOOGLE DRIVE AUTH
 function loadGSI() {
   return new Promise((res) => {
     if (window.google && google.accounts) { res(); return; }
@@ -304,7 +301,6 @@ function setStatus(s) {
   else{dot.classList.add('off');txt.textContent='Solo local';}
 }
 
-// DRIVE API
 async function driveReq(url, opts={}) {
   const r = await fetch(url, {...opts, headers:{'Authorization':'Bearer '+accessToken,...(opts.headers||{})}});
   if(r.status===401){accessToken=null;usingDrive=false;setStatus('off');return null;}
@@ -354,12 +350,10 @@ async function saveToDrive() {
   }
 }
 
-// LOCAL
 function saveLocal(){try{localStorage.setItem(STORE_KEY,JSON.stringify(DB));}catch(e){}}
 function loadLocal(){try{const d=localStorage.getItem(STORE_KEY);if(d){const p=JSON.parse(d);Object.keys(DB).forEach(k=>{if(p[k])DB[k]=p[k];});}}catch(e){}}
 function save(){saveLocal();if(usingDrive){clearTimeout(saveTimer);saveTimer=setTimeout(saveToDrive,1500);}}
 
-// HELPERS
 function today(){return new Date().toISOString().slice(0,10);}
 function fmt(d){if(!d)return '—';const [y,m,dd]=d.split('-');return `${dd}/${m}/${y}`;}
 
@@ -379,7 +373,6 @@ const DOT={
   'Borrador':'dot-gray'
 };
 
-// NAV
 document.getElementById('nav').addEventListener('click',e=>{
   const btn=e.target.closest('button[data-page]');if(!btn)return;
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
@@ -387,7 +380,6 @@ document.getElementById('nav').addEventListener('click',e=>{
   document.getElementById('page-'+btn.dataset.page).classList.add('active');renderAll();
 });
 
-// RENDER DASHBOARD ACTUALIZADO CON FLUJO DE FONDOS
 function renderDashboard(){
   const hoy=new Date();
   document.getElementById('fecha-hoy').textContent=hoy.toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -432,35 +424,6 @@ function renderDashboard(){
   DB.ventas.slice(0,2).forEach(v=>act.push({d:v.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[v.estado]}"></div><div class="activity-body"><div class="a-main">Venta <strong>${v.cliente}</strong> por ${money(v.monto)}</div><div class="a-sub">${fmt(v.fecha)} - ${v.estado}</div></div></div>`}));
   DB.cobranzas.slice(0,2).forEach(c=>act.push({d:c.vencimiento,html:`<div class="activity-item"><div class="activity-dot ${DOT[c.estado]}"></div><div class="activity-body"><div class="a-main">Cobranza <strong>${c.cliente}</strong> (${c.estado})</div><div class="a-sub">Total: ${money(c.total||c.monto)} | Vence: ${fmt(c.vencimiento)}</div></div></div>`}));
   DB.gastos.slice(0,2).forEach(g=>act.push({d:g.fecha,html:`<div class="activity-item"><div class="activity-dot b-gray"></div><div class="activity-body"><div class="a-main">Gasto: <strong>${g.concepto}</strong> por ${money(g.monto)}</div><div class="a-sub">${fmt(g.fecha)} - ${g.estado}</div></div></div>`}));
-  
-  act.sort((a,b)=>b.d.localeCompare(a.d));
-  document.getElementById('dash-activity').innerHTML=act.length?act.map(a=>a.html).join(''):'<div class="empty-state" style="padding:20px">Sin actividad reciente</div>';
-     }
-  });
-
-  let gastosOperativos = 0;
-  let compromisosPago = 0;
-  
-  DB.gastos.forEach(g => {
-     const m = parseNum(g.monto);
-     if (g.estado === 'Pagado') gastosOperativos += m;
-     else if (g.estado === 'Pendiente') compromisosPago += m;
-  });
-
-  const cajaReal = ingresosReales - gastosOperativos;
-
-  document.getElementById('dash-metrics').innerHTML=`
-    <div class="metric-card" style="border-left: 3px solid var(--accent)"><div class="m-label">Caja Real (Saldo)</div><div class="m-val">${money(cajaReal)}</div><div class="m-sub">Disponible actual</div></div>
-    <div class="metric-card"><div class="m-label">Ingresos Reales</div><div class="m-val">${money(ingresosReales)}</div><div class="m-sub">Dinero ingresado</div></div>
-    <div class="metric-card"><div class="m-label">Gastos Operativos</div><div class="m-val">${money(gastosOperativos)}</div><div class="m-sub">Dinero egresado</div></div>
-    <div class="metric-card"><div class="m-label">Pendiente de cobro</div><div class="m-val">${money(porCobrar)}</div><div class="m-sub">Falta cobrar a clientes</div></div>
-    <div class="metric-card"><div class="m-label">Compromisos de pago</div><div class="m-val" style="color:var(--warn)">${money(compromisosPago)}</div><div class="m-sub">Gastos por pagar</div></div>
-  `;
-
-  let act=[];
-  DB.ventas.slice(0,2).forEach(v=>act.push({d:v.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[v.estado]}"></div><div class="activity-body"><div class="a-main">Venta <strong>${v.cliente}</strong> por ${money(v.monto)}</div><div class="a-sub">${fmt(v.fecha)} - ${v.estado}</div></div></div>`}));
-  DB.cobranzas.slice(0,2).forEach(c=>act.push({d:c.vencimiento,html:`<div class="activity-item"><div class="activity-dot ${DOT[c.estado]}"></div><div class="activity-body"><div class="a-main">Cobranza <strong>${c.cliente}</strong> (${c.estado})</div><div class="a-sub">Total: ${money(c.total||c.monto)} | Vence: ${fmt(c.vencimiento)}</div></div></div>`}));
-  DB.gastos.slice(0,2).forEach(g=>act.push({d:g.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[g.estado]}"></div><div class="activity-body"><div class="a-main">Gasto: <strong>${g.concepto}</strong> por ${money(g.monto)}</div><div class="a-sub">${fmt(g.fecha)} - ${g.estado}</div></div></div>`}));
   
   act.sort((a,b)=>b.d.localeCompare(a.d));
   document.getElementById('dash-activity').innerHTML=act.length?act.map(a=>a.html).join(''):'<div class="empty-state" style="padding:20px">Sin actividad reciente</div>';
@@ -514,17 +477,8 @@ function renderGastos(){
   ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">▼</div>Sin gastos registrados</td></tr>`;
 }
 
-function renderGastos(){
-  const q=(document.getElementById('gas-search').value||'').toLowerCase(),f=document.getElementById('gas-filter').value;
-  const rows=DB.gastos.filter(g=>(!q||(g.concepto).toLowerCase().includes(q))&&(!f||g.estado===f));
-  document.getElementById('gas-tbody').innerHTML=rows.length?rows.map((g,i)=>
-    `<tr><td>${fmt(g.fecha)}</td><td><strong>${g.concepto}</strong></td><td><span class="badge b-gray">${g.categoria||'Varios'}</span></td><td style="font-family:'DM Mono',monospace">${money(g.monto)}</td><td><span class="badge b-gray">${g.estado}</span></td><td><button class="action-btn" onclick="editModal('gas',${i})">Ver</button></td></tr>`
-  ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">▼</div>Sin gastos registrados</td></tr>`;
-}
-
 function renderAll(){renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();}
 
-// MODAL
 function cliOpts(sel=''){return '<option value="">— Sin cliente —</option>'+DB.clientes.map(c=>`<option ${c.nombre===sel?'selected':''}>${c.nombre}</option>`).join('');}
 
 const FORMS={
@@ -578,7 +532,7 @@ const FORMS={
       <option ${d.estado==='Enviada'?'selected':''}>Enviada</option>
       <option ${d.estado==='Aceptada'?'selected':''}>Aceptada</option>
       <option ${d.estado==='Rechazada'?'selected':''}>Rechazada</option>
-   </select></div>
+    </select></div>
     <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
 
   gas:(d={})=>`<h3>${d.concepto?'Editar gasto':'Nuevo gasto'}</h3>
@@ -613,7 +567,7 @@ function openModal(t){
 
 function editModal(t,i){
   modalState={t,i};
- const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
+  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
   mContent.innerHTML=FORMS[t](list[i])+`<div class="modal-footer"><button class="btn btn-danger" style="margin-right:auto" onclick="delItem()">Eliminar</button><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveForm()">Guardar</button></div>`;
   overlay.classList.add('open');
 }
@@ -621,7 +575,7 @@ function editModal(t,i){
 function delItem(){
   if(!confirm('¿Eliminar registro?'))return;
   const {t,i}=modalState;
- const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
+  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
   list.splice(i,1);
   save();renderAll();closeModal();
 }
@@ -684,15 +638,6 @@ function saveForm(){
     obj.estado=document.getElementById('f-estado').value;
     obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.cliente)return alert('Cliente requerido');
-    } else if(t==='gas'){
-    obj.concepto=document.getElementById('f-concepto').value;
-    obj.categoria=document.getElementById('f-categoria').value;
-    obj.monto=document.getElementById('f-monto').value;
-    obj.estado=document.getElementById('f-estado').value;
-    obj.fecha=document.getElementById('f-fecha').value;
-    if(!obj.concepto)return alert('Concepto requerido');
-    if(!obj.monto)return alert('Monto requerido');
-  }
 
     if(obj.estado === 'Aceptada') {
        let cobIdx = DB.cobranzas.findIndex(c => c.presupuestoId === obj.id);
@@ -724,7 +669,6 @@ function saveForm(){
   save();renderAll();closeModal();
 }
 
-// EXPORT E IMPORT
 const SHEET_MAP={
   clientes:{name:'Clientes',cols:['nombre','tel','email','notas']},
   ventas:{name:'Ventas',cols:['cliente','descripcion','monto','estado','fecha']},
