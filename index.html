@@ -21,7 +21,7 @@
   .logo span{color:var(--muted);font-weight:400;font-size:12px;display:block;margin-top:2px}
   .magenta-credit{padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
   .mg-label{font-size:10px;color:var(--muted);line-height:1.3}
-  nav{padding:12px 10px;flex:1}
+  nav{padding:12px 10px;flex:1;overflow-y:auto}
   nav button{width:100%;text-align:left;padding:9px 12px;border:none;background:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13.5px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:9px;margin-bottom:2px;transition:background 0.15s,color 0.15s}
   nav button:hover{background:var(--bg);color:var(--text)}
   nav button.active{background:var(--accent-light);color:var(--accent);font-weight:500}
@@ -106,7 +106,7 @@
 
 <div class="login-screen visible" id="login-screen">
   <div class="login-box">
-    <img src="isologo.png" width="52" height="52" style="border-radius:50%;margin-bottom:16px" alt="Magenta">
+    <img src="isologo.png" width="52" height="52" style="border-radius:50%;margin-bottom:16px" alt="Magenta" onerror="this.style.display='none'">
     <h2>CRM Mi Negocio</h2>
     <p>Conectá tu Google Drive para que tus datos queden guardados en tu propia cuenta y nunca se pierdan.</p>
     <button class="btn btn-google" onclick="loginGoogle()">
@@ -134,12 +134,13 @@
       <button data-page="leads"><span class="ico">◌</span> Consultas</button>
       <button data-page="cobranzas"><span class="ico">◑</span> Cobranzas</button>
       <button data-page="presupuestos"><span class="ico">◐</span> Presupuestos</button>
+      <button data-page="gastos"><span class="ico">▼</span> Gastos</button>
     </nav>
     <div class="magenta-credit">
-      <img src="isologo.png" alt="Magenta" width="24">
+      <img src="isologo.png" alt="Magenta" width="24" onerror="this.style.display='none'">
       <div>
         <div class="mg-label">Desarrollado por</div>
-        <img src="logotipo.png" alt="Magenta" height="12">
+        <img src="logotipo.png" alt="Magenta" height="12" onerror="this.style.display='none'">
       </div>
     </div>
   </aside>
@@ -212,6 +213,17 @@
       </div>
       <div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead><tbody id="pre-tbody"></tbody></table></div></div>
     </div>
+
+    <div class="page" id="page-gastos">
+      <div class="page-header"><div class="page-title">Gastos / Egresos</div><button class="btn btn-primary" onclick="openModal('gas')">+ Nuevo gasto</button></div>
+      <div class="toolbar">
+        <input id="gas-search" placeholder="Buscar concepto..." oninput="renderGastos()">
+        <select id="gas-filter" onchange="renderGastos()"><option value="">Todos los estados</option><option>Pagado</option><option>Pendiente</option></select>
+        <button class="btn" onclick="exportarHoja('gastos')" style="font-size:12px;padding:6px 11px">&#11015; Exportar</button>
+        <label class="btn" style="cursor:pointer;margin:0;font-size:12px;padding:6px 11px">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'gastos')"></label>
+      </div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Monto</th><th>Estado</th><th></th></tr></thead><tbody id="gas-tbody"></tbody></table></div></div>
+    </div>
   </main>
 </div>
 
@@ -225,7 +237,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 const DRIVE_FILE = 'crm-minegocio-data.json';
 const STORE_KEY = 'crm_minegocio_v1';
 
-const DB = { clientes:[], ventas:[], leads:[], cobranzas:[], presupuestos:[] };
+const DB = { clientes:[], ventas:[], leads:[], cobranzas:[], presupuestos:[], gastos:[] };
 let driveFileId=null, accessToken=null, saveTimer=null, usingDrive=false;
 
 // GENERADOR DE ID ÚNICOS (Motor relacional)
@@ -352,7 +364,7 @@ function today(){return new Date().toISOString().slice(0,10);}
 function fmt(d){if(!d)return '—';const [y,m,dd]=d.split('-');return `${dd}/${m}/${y}`;}
 
 const BADGE={
-  'Realizada':'b-green','Cobrado':'b-green','Aceptada':'b-green','Convertido':'b-green',
+  'Realizada':'b-green','Cobrado':'b-green','Aceptada':'b-green','Convertido':'b-green','Pagado':'b-green',
   'En espera':'b-yellow','Pendiente':'b-yellow','En seguimiento':'b-yellow',
   'Consulta':'b-blue','Enviada':'b-blue','Nuevo':'b-blue','Cobro Parcial':'b-blue',
   'Vencido':'b-red','Perdido':'b-red','Rechazada':'b-red',
@@ -360,7 +372,7 @@ const BADGE={
 };
 function badge(s){return `<span class="badge ${BADGE[s]||'b-gray'}">${s}</span>`;}
 const DOT={
-  'Realizada':'dot-green','Cobrado':'dot-green','Aceptada':'dot-green','Convertido':'dot-green',
+  'Realizada':'dot-green','Cobrado':'dot-green','Aceptada':'dot-green','Convertido':'dot-green','Pagado':'dot-green',
   'En espera':'dot-yellow','Pendiente':'dot-yellow','En seguimiento':'dot-yellow',
   'Consulta':'dot-blue','Enviada':'dot-blue','Nuevo':'dot-blue','Cobro Parcial':'dot-blue',
   'Vencido':'dot-red','Perdido':'dot-red','Rechazada':'dot-red',
@@ -375,7 +387,7 @@ document.getElementById('nav').addEventListener('click',e=>{
   document.getElementById('page-'+btn.dataset.page).classList.add('active');renderAll();
 });
 
-// RENDER DASHBOARD
+// RENDER DASHBOARD ACTUALIZADO CON FLUJO DE FONDOS
 function renderDashboard(){
   const hoy=new Date();
   document.getElementById('fecha-hoy').textContent=hoy.toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -385,10 +397,8 @@ function renderDashboard(){
   let cobrosVencidos = 0;
 
   DB.cobranzas.forEach(c => {
-     // ParseNum aplica el blindaje de punto flotante a los cálculos
      const t = parseNum(c.total) || parseNum(c.monto);
      const p = parseNum(c.cobrado);
-     
      if (c.estado === 'Cobrado') {
          ingresosReales += (p > 0 ? p : t);
      } else if (c.estado === 'Pendiente' || c.estado === 'Cobro Parcial' || c.estado === 'Vencido') {
@@ -399,21 +409,29 @@ function renderDashboard(){
      }
   });
 
-  const leadsActivos = DB.leads.filter(l=>l.estado==='Nuevo'||l.estado==='En seguimiento').length;
-  const presEnv = DB.presupuestos.filter(o=>o.estado==='Enviada').length;
-  const presMonto = DB.presupuestos.filter(o=>o.estado==='Enviada').reduce((a,o)=>a+parseNum(o.monto),0);
+  let gastosOperativos = 0;
+  let compromisosPago = 0;
+  
+  DB.gastos.forEach(g => {
+     const m = parseNum(g.monto);
+     if (g.estado === 'Pagado') gastosOperativos += m;
+     else if (g.estado === 'Pendiente') compromisosPago += m;
+  });
+
+  const cajaReal = ingresosReales - gastosOperativos;
 
   document.getElementById('dash-metrics').innerHTML=`
+    <div class="metric-card" style="border-left: 3px solid var(--accent)"><div class="m-label">Caja Real (Saldo)</div><div class="m-val">${money(cajaReal)}</div><div class="m-sub">Disponible actual</div></div>
     <div class="metric-card"><div class="m-label">Ingresos Reales</div><div class="m-val">${money(ingresosReales)}</div><div class="m-sub">Dinero ingresado</div></div>
-    <div class="metric-card"><div class="m-label">Pendiente de cobro</div><div class="m-val">${money(porCobrar)}</div><div class="m-sub">Falta cobrar</div></div>
-    <div class="metric-card"><div class="m-label">Presupuestos enviados</div><div class="m-val">${money(presMonto)}</div><div class="m-sub">${presEnv} en seguimiento</div></div>
-    <div class="metric-card"><div class="m-label">Consultas activas</div><div class="m-val">${leadsActivos}</div><div class="m-sub">Leads nuevos</div></div>
-    <div class="metric-card"><div class="m-label">Cobros vencidos</div><div class="m-val" style="color:var(--danger)">${cobrosVencidos}</div><div class="m-sub">Acción requerida</div></div>
+    <div class="metric-card"><div class="m-label">Gastos Operativos</div><div class="m-val">${money(gastosOperativos)}</div><div class="m-sub">Dinero egresado</div></div>
+    <div class="metric-card"><div class="m-label">Pendiente de cobro</div><div class="m-val">${money(porCobrar)}</div><div class="m-sub">Falta cobrar a clientes</div></div>
+    <div class="metric-card"><div class="m-label">Compromisos de pago</div><div class="m-val" style="color:var(--warn)">${money(compromisosPago)}</div><div class="m-sub">Gastos por pagar</div></div>
   `;
 
   let act=[];
-  DB.ventas.slice(0,3).forEach(v=>act.push({d:v.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[v.estado]}"></div><div class="activity-body"><div class="a-main">Venta <strong>${v.cliente}</strong> por ${money(v.monto)}</div><div class="a-sub">${fmt(v.fecha)} - ${v.estado}</div></div></div>`}));
+  DB.ventas.slice(0,2).forEach(v=>act.push({d:v.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[v.estado]}"></div><div class="activity-body"><div class="a-main">Venta <strong>${v.cliente}</strong> por ${money(v.monto)}</div><div class="a-sub">${fmt(v.fecha)} - ${v.estado}</div></div></div>`}));
   DB.cobranzas.slice(0,2).forEach(c=>act.push({d:c.vencimiento,html:`<div class="activity-item"><div class="activity-dot ${DOT[c.estado]}"></div><div class="activity-body"><div class="a-main">Cobranza <strong>${c.cliente}</strong> (${c.estado})</div><div class="a-sub">Total: ${money(c.total||c.monto)} | Vence: ${fmt(c.vencimiento)}</div></div></div>`}));
+  DB.gastos.slice(0,2).forEach(g=>act.push({d:g.fecha,html:`<div class="activity-item"><div class="activity-dot ${DOT[g.estado]}"></div><div class="activity-body"><div class="a-main">Gasto: <strong>${g.concepto}</strong> por ${money(g.monto)}</div><div class="a-sub">${fmt(g.fecha)} - ${g.estado}</div></div></div>`}));
   
   act.sort((a,b)=>b.d.localeCompare(a.d));
   document.getElementById('dash-activity').innerHTML=act.length?act.map(a=>a.html).join(''):'<div class="empty-state" style="padding:20px">Sin actividad reciente</div>';
@@ -459,7 +477,15 @@ function renderPresupuestos(){
   ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">◐</div>Sin presupuestos</td></tr>`;
 }
 
-function renderAll(){renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();}
+function renderGastos(){
+  const q=(document.getElementById('gas-search').value||'').toLowerCase(),f=document.getElementById('gas-filter').value;
+  const rows=DB.gastos.filter(g=>(!q||(g.concepto).toLowerCase().includes(q))&&(!f||g.estado===f));
+  document.getElementById('gas-tbody').innerHTML=rows.length?rows.map((g,i)=>
+    `<tr><td>${fmt(g.fecha)}</td><td><strong>${g.concepto}</strong></td><td><span class="badge b-gray">${g.categoria||'Varios'}</span></td><td style="font-family:'DM Mono',monospace">${money(g.monto)}</td><td>${badge(g.estado)}</td><td><button class="action-btn" onclick="editModal('gas',${i})">Ver</button></td></tr>`
+  ).join(''):`<tr><td colspan="6" class="empty-state"><div class="emo">▼</div>Sin gastos registrados</td></tr>`;
+}
+
+function renderAll(){renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();}
 
 // MODAL
 function cliOpts(sel=''){return '<option value="">— Sin cliente —</option>'+DB.clientes.map(c=>`<option ${c.nombre===sel?'selected':''}>${c.nombre}</option>`).join('');}
@@ -516,6 +542,22 @@ const FORMS={
       <option ${d.estado==='Aceptada'?'selected':''}>Aceptada</option>
       <option ${d.estado==='Rechazada'?'selected':''}>Rechazada</option>
     </select></div>
+    <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
+
+  gas:(d={})=>`<h3>${d.concepto?'Editar gasto':'Nuevo gasto'}</h3>
+    <div class="form-row"><label>Concepto *</label><input id="f-concepto" value="${d.concepto||''}" placeholder="Ej: Publicidad, Alquiler..."></div>
+    <div class="form-row"><label>Categoría</label><select id="f-categoria">
+      <option ${d.categoria==='Fijos'?'selected':''}>Fijos</option>
+      <option ${d.categoria==='Proveedores'?'selected':''}>Proveedores</option>
+      <option ${d.categoria==='Impuestos'?'selected':''}>Impuestos</option>
+      <option ${d.categoria==='Honorarios'?'selected':''}>Honorarios</option>
+      <option ${d.categoria==='Varios'?'selected':''}>Varios</option>
+    </select></div>
+    <div class="form-row"><label>Monto *</label><input type="number" id="f-monto" value="${d.monto||''}" step="0.01"></div>
+    <div class="form-row"><label>Estado</label><select id="f-estado">
+      <option ${d.estado==='Pagado'?'selected':''}>Pagado</option>
+      <option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option>
+    </select></div>
     <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`
 };
 
@@ -534,7 +576,7 @@ function openModal(t){
 
 function editModal(t,i){
   modalState={t,i};
-  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:DB.presupuestos;
+  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
   mContent.innerHTML=FORMS[t](list[i])+`<div class="modal-footer"><button class="btn btn-danger" style="margin-right:auto" onclick="delItem()">Eliminar</button><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveForm()">Guardar</button></div>`;
   overlay.classList.add('open');
 }
@@ -542,14 +584,14 @@ function editModal(t,i){
 function delItem(){
   if(!confirm('¿Eliminar registro?'))return;
   const {t,i}=modalState;
-  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:DB.presupuestos;
+  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
   list.splice(i,1);
   save();renderAll();closeModal();
 }
 
 function saveForm(){
   const {t,i}=modalState;
-  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:DB.presupuestos;
+  const list = t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:DB.gastos;
   
   let obj = i !== null ? { ...list[i] } : { id: generarId() };
   if(i !== null && !obj.id) obj.id = generarId(); 
@@ -568,20 +610,13 @@ function saveForm(){
     obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.cliente)return alert('Cliente requerido');
     
-    // AUTOMATIZACIÓN VINCULADA: Venta <-> Cobranza
     if(obj.estado === 'Realizada') {
        let cobIdx = DB.cobranzas.findIndex(c => c.ventaId === obj.id);
-       
        if (cobIdx === -1) {
          DB.cobranzas.unshift({
-           id: generarId(),
-           ventaId: obj.id,
-           cliente: obj.cliente,
-           concepto: obj.descripcion || 'Venta',
-           total: obj.monto,
-           cobrado: 0,
-           vencimiento: obj.fecha,
-           estado: 'Pendiente'
+           id: generarId(), ventaId: obj.id, cliente: obj.cliente,
+           concepto: obj.descripcion || 'Venta', total: obj.monto,
+           cobrado: 0, vencimiento: obj.fecha, estado: 'Pendiente'
          });
          alert('¡Venta realizada! Se generó y vinculó la cuenta por cobrar automáticamente.');
        } else {
@@ -590,7 +625,6 @@ function saveForm(){
          DB.cobranzas[cobIdx].total = obj.monto;
        }
     }
-
   } else if(t==='lead'){
     obj.contacto=document.getElementById('f-contacto').value;
     obj.interes=document.getElementById('f-interes').value;
@@ -614,20 +648,13 @@ function saveForm(){
     obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.cliente)return alert('Cliente requerido');
 
-    // NUEVO: AUTOMATIZACIÓN VINCULADA: Presupuesto <-> Cobranza
     if(obj.estado === 'Aceptada') {
        let cobIdx = DB.cobranzas.findIndex(c => c.presupuestoId === obj.id);
-       
        if (cobIdx === -1) {
          DB.cobranzas.unshift({
-           id: generarId(),
-           presupuestoId: obj.id,
-           cliente: obj.cliente,
-           concepto: obj.descripcion || 'Presupuesto Aceptado',
-           total: obj.monto,
-           cobrado: 0,
-           vencimiento: obj.fecha,
-           estado: 'Pendiente'
+           id: generarId(), presupuestoId: obj.id, cliente: obj.cliente,
+           concepto: obj.descripcion || 'Presupuesto Aceptado', total: obj.monto,
+           cobrado: 0, vencimiento: obj.fecha, estado: 'Pendiente'
          });
          alert('¡Presupuesto Aceptado! Se generó y vinculó la cuenta por cobrar automáticamente.');
        } else {
@@ -636,6 +663,14 @@ function saveForm(){
          DB.cobranzas[cobIdx].total = obj.monto;
        }
     }
+  } else if(t==='gas'){
+    obj.concepto=document.getElementById('f-concepto').value;
+    obj.categoria=document.getElementById('f-categoria').value;
+    obj.monto=document.getElementById('f-monto').value;
+    obj.estado=document.getElementById('f-estado').value;
+    obj.fecha=document.getElementById('f-fecha').value;
+    if(!obj.concepto)return alert('Concepto requerido');
+    if(!obj.monto)return alert('Monto requerido');
   }
 
   if(i!==null) list[i]=obj; else list.unshift(obj);
@@ -649,7 +684,8 @@ const SHEET_MAP={
   ventas:{name:'Ventas',cols:['cliente','descripcion','monto','estado','fecha']},
   leads:{name:'Consultas',cols:['contacto','interes','canal','estado','fecha']},
   cobranzas:{name:'Cobranzas',cols:['cliente','concepto','total','cobrado','vencimiento','estado']},
-  presupuestos:{name:'Presupuestos',cols:['cliente','descripcion','monto','estado','fecha']}
+  presupuestos:{name:'Presupuestos',cols:['cliente','descripcion','monto','estado','fecha']},
+  gastos:{name:'Gastos',cols:['fecha','concepto','categoria','monto','estado']}
 };
 
 function exportarExcel(){
