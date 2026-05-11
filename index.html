@@ -6,6 +6,7 @@
 <title>CRM — Mi Negocio</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
 :root{
@@ -257,7 +258,7 @@ tbody tr:hover td{background:#FAFAF8}
         <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ventas')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Cliente</th><th>Producto/Servicio</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Producto/Servicio</th><th>Monto</th><th>Estado</th><th>Fecha</th><th style="min-width:140px">Acciones</th></tr></thead>
         <tbody id="ven-tbody"></tbody>
       </table></div></div>
     </div>
@@ -302,7 +303,7 @@ tbody tr:hover td{background:#FAFAF8}
         <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'presupuestos')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Cliente</th><th>Producto/Servicio</th><th>Monto</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Producto/Servicio</th><th>Monto</th><th>Estado</th><th>Fecha</th><th style="min-width:100px">Acciones</th></tr></thead>
         <tbody id="pre-tbody"></tbody>
       </table></div></div>
     </div>
@@ -571,7 +572,18 @@ function renderClientes(){
 function renderVentas(){
   const q=(document.getElementById('ven-search').value||'').toLowerCase(),f=document.getElementById('ven-filter').value;
   const rows=DB.ventas.filter(v=>(!q||(v.cliente+v.descripcion+v.producto).toLowerCase().includes(q))&&(!f||v.estado===f));
-  document.getElementById('ven-tbody').innerHTML=rows.length?rows.map((v,i)=>`<tr><td>${v.cliente||'—'}</td><td>${v.producto||v.descripcion||'—'}</td><td style="font-family:'DM Mono',monospace">${money(v.monto)}</td><td>${badge(v.estado)}</td><td>${fmt(v.fecha)}</td><td><button class="action-btn" onclick="editModal('ven',${i})">Ver</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin ventas</td></tr>`;
+  document.getElementById('ven-tbody').innerHTML=rows.length?rows.map((v,i)=>`<tr>
+    <td>${v.cliente||'—'}</td>
+    <td>${v.producto||v.descripcion||'—'}</td>
+    <td style="font-family:'DM Mono',monospace">${money(v.monto)}</td>
+    <td>${badge(v.estado)}</td>
+    <td>${fmt(v.fecha)}</td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="action-btn" onclick="editModal('ven',${i})">Ver</button>
+      <button class="action-btn" style="color:var(--info);border-color:var(--info-light)" onclick="irARCA(${i})" title="Facturar en ARCA">ARCA</button>
+      <button class="action-btn" style="color:var(--accent);border-color:var(--accent-light)" onclick="generarPDF('ven',${i})" title="Descargar comprobante PDF">PDF</button>
+    </td>
+  </tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin ventas</td></tr>`;
 }
 function renderLeads(){
   const q=(document.getElementById('lead-search').value||'').toLowerCase(),f=document.getElementById('lead-filter').value;
@@ -586,7 +598,17 @@ function renderCobranzas(){
 function renderPresupuestos(){
   const q=(document.getElementById('pre-search').value||'').toLowerCase(),f=document.getElementById('pre-filter').value;
   const rows=DB.presupuestos.filter(o=>(!q||(o.cliente+o.descripcion+o.producto).toLowerCase().includes(q))&&(!f||o.estado===f));
-  document.getElementById('pre-tbody').innerHTML=rows.length?rows.map((o,i)=>`<tr><td>${o.cliente||'—'}</td><td>${o.producto||o.descripcion||'—'}</td><td style="font-family:'DM Mono',monospace">${money(o.monto)}</td><td>${badge(o.estado)}</td><td>${fmt(o.fecha)}</td><td><button class="action-btn" onclick="editModal('pre',${i})">Ver</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin presupuestos</td></tr>`;
+  document.getElementById('pre-tbody').innerHTML=rows.length?rows.map((o,i)=>`<tr>
+    <td>${o.cliente||'—'}</td>
+    <td>${o.producto||o.descripcion||'—'}</td>
+    <td style="font-family:'DM Mono',monospace">${money(o.monto)}</td>
+    <td>${badge(o.estado)}</td>
+    <td>${fmt(o.fecha)}</td>
+    <td style="display:flex;gap:4px">
+      <button class="action-btn" onclick="editModal('pre',${i})">Ver</button>
+      <button class="action-btn" style="color:var(--accent);border-color:var(--accent-light)" onclick="generarPDF('pre',${i})" title="Descargar PDF">PDF</button>
+    </td>
+  </tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin presupuestos</td></tr>`;
 }
 function renderGastos(){
   const q=(document.getElementById('gas-search').value||'').toLowerCase(),f=document.getElementById('gas-filter').value;
@@ -622,6 +644,173 @@ function renderMetricas(){
   const pe={Borrador:0,Enviada:0,Aceptada:0,Rechazada:0};DB.presupuestos.forEach(p=>{if(pe[p.estado]!==undefined)pe[p.estado]++;});
   makeChart('chart-pre','bar',Object.keys(pe),[{data:Object.values(pe),backgroundColor:[C.grl,C.il,C.gl,C.dl],borderColor:[C.gr,C.i,C.g,C.d],borderWidth:2,borderRadius:6}],{plugins:{legend:{display:false}}});
 }
+
+
+// ARCA
+function irARCA(i){
+  const v=DB.ventas[i];
+  const msg='Vas a ir a ARCA para facturar esta venta:\n\n'+
+    'Cliente: '+(v.cliente||'—')+'\n'+
+    'Producto: '+(v.producto||v.descripcion||'—')+'\n'+
+    'Monto: '+money(v.monto)+'\n\n'+
+    'Tené estos datos a mano cuando estés en ARCA.';
+  if(confirm(msg)){window.open('https://www.afip.gob.ar/facturae/','_blank');}
+}
+
+// PDF COMPROBANTE
+function generarPDF(tipo, i){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const item = tipo==='ven' ? DB.ventas[i] : DB.presupuestos[i];
+  const esPresupuesto = tipo==='pre';
+  const titulo = esPresupuesto ? 'PRESUPUESTO' : 'COMPROBANTE DE VENTA';
+  const numero = String(i+1).padStart(4,'0');
+  const fecha = fmt(item.fecha||today());
+
+  // Colores
+  const verde=[45,95,63];
+  const gris=[122,120,111];
+  const negro=[26,25,24];
+  const borde=[226,224,216];
+
+  // Header fondo verde
+  doc.setFillColor(...verde);
+  doc.rect(0,0,210,38,'F');
+
+  // Título
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica','bold');
+  doc.text(titulo,15,18);
+
+  // Número y fecha en header
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.text('N° '+numero,15,27);
+  doc.text('Fecha: '+fecha,15,33);
+
+  // Línea separadora
+  doc.setDrawColor(...borde);
+  doc.setLineWidth(0.3);
+  doc.line(15,44,195,44);
+
+  // Datos del cliente
+  doc.setTextColor(...gris);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','bold');
+  doc.text('CLIENTE',15,52);
+
+  doc.setTextColor(...negro);
+  doc.setFontSize(11);
+  doc.setFont('helvetica','bold');
+  doc.text(item.cliente||'—',15,59);
+
+  // Buscar datos del cliente
+  const cli=DB.clientes.find(c=>c.nombre===item.cliente);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...gris);
+  if(cli&&cli.email)doc.text(cli.email,15,65);
+  if(cli&&cli.tel)doc.text(cli.tel,15,71);
+
+  // Línea
+  doc.setDrawColor(...borde);
+  doc.line(15,78,195,78);
+
+  // Detalle
+  doc.setTextColor(...gris);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','bold');
+  doc.text('DESCRIPCIÓN',15,86);
+  doc.text('MONTO',175,86,'right');
+
+  doc.setDrawColor(...verde);
+  doc.setLineWidth(0.5);
+  doc.line(15,89,195,89);
+
+  // Item
+  doc.setTextColor(...negro);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(11);
+  const prodNombre=item.producto||item.descripcion||'Sin descripción';
+  const prodLines=doc.splitTextToSize(prodNombre,140);
+  doc.text(prodLines,15,97);
+  doc.setFont('helvetica','bold');
+  doc.text(money(item.monto),175,97,'right');
+
+  // Buscar precio del producto si existe
+  const prod=DB.productos.find(p=>p.nombre===item.producto);
+  if(prod&&prod.descripcion){
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...gris);
+    const descLines=doc.splitTextToSize(prod.descripcion,140);
+    doc.text(descLines,15,104);
+  }
+
+  // Línea total
+  const yTotal=118;
+  doc.setDrawColor(...borde);
+  doc.setLineWidth(0.3);
+  doc.line(15,yTotal,195,yTotal);
+
+  // Recuadro total
+  doc.setFillColor(247,246,242);
+  doc.roundedRect(130,yTotal+3,65,16,2,2,'F');
+  doc.setTextColor(...gris);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.text('TOTAL',135,yTotal+10);
+  doc.setTextColor(...negro);
+  doc.setFontSize(14);
+  doc.setFont('helvetica','bold');
+  doc.text(money(item.monto),190,yTotal+13,'right');
+
+  // Estado badge
+  if(!esPresupuesto){
+    doc.setFontSize(9);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...gris);
+    doc.text('Estado: '+item.estado,15,yTotal+10);
+  }
+
+  // Nota CC si tiene saldo
+  const saldo=getSaldoCC(item.cliente);
+  if(saldo!==0){
+    doc.setFontSize(9);
+    doc.setTextColor(saldo>0?45:192,saldo>0?95:57,saldo>0?63:43);
+    doc.text('Saldo cuenta corriente: '+money(saldo),15,yTotal+20);
+  }
+
+  // Footer
+  doc.setFillColor(...verde);
+  doc.rect(0,272,210,25,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  doc.text('Comprobante generado por Mi Negocio CRM',105,282,'center');
+  doc.setFontSize(7);
+  doc.setTextColor(200,220,210);
+  doc.text('Este documento no reemplaza a una factura oficial. Para facturar ingresá a ARCA: www.afip.gob.ar/facturae',105,288,'center');
+
+  const filename=(esPresupuesto?'Presupuesto':'Comprobante')+'_'+numero+'_'+(item.cliente||'cliente').replace(/[^a-zA-Z0-9]/g,'_')+'.pdf';
+  doc.save(filename);
+}
+
+// CC AUTO-SYNC: registra movimiento en CC cuando se guarda una venta/cobranza
+function syncCC(clienteNombre, concepto, monto, tipo, fecha, refId){
+  if(!clienteNombre||!monto)return;
+  if(!DB.cuentaCorriente[clienteNombre])DB.cuentaCorriente[clienteNombre]=[];
+  // Evitar duplicados por refId
+  const existe=DB.cuentaCorriente[clienteNombre].find(m=>m.refId===refId);
+  if(existe){
+    // Actualizar si cambió el monto
+    existe.monto=monto;existe.concepto=concepto;existe.fecha=fecha;
+    return;
+  }
+  DB.cuentaCorriente[clienteNombre].push({id:generarId(),refId,tipo,concepto,monto,fecha});
+}
+
 
 function renderAll(){renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();renderProductos();renderMetricas();}
 
@@ -703,8 +892,14 @@ function saveForm(){
     if(!obj.cliente)return alert('Cliente requerido');
     if(obj.estado==='Realizada'){
       const ci=DB.cobranzas.findIndex(c=>c.ventaId===obj.id);
-      if(ci===-1){DB.cobranzas.unshift({id:generarId(),ventaId:obj.id,cliente:obj.cliente,concepto:obj.producto||'Venta',total:obj.monto,cobrado:0,vencimiento:obj.fecha,estado:'Pendiente'});alert('Venta realizada. Cobranza generada automáticamente.');}
-      else{DB.cobranzas[ci].cliente=obj.cliente;DB.cobranzas[ci].concepto=obj.producto||'Venta';DB.cobranzas[ci].total=obj.monto;}
+      if(ci===-1){
+        DB.cobranzas.unshift({id:generarId(),ventaId:obj.id,cliente:obj.cliente,concepto:obj.producto||'Venta',total:obj.monto,cobrado:0,vencimiento:obj.fecha,estado:'Pendiente'});
+        alert('Venta realizada. Cobranza generada automáticamente.');
+      }else{
+        DB.cobranzas[ci].cliente=obj.cliente;DB.cobranzas[ci].concepto=obj.producto||'Venta';DB.cobranzas[ci].total=obj.monto;
+      }
+      // Sync CC: cargo por la venta
+      syncCC(obj.cliente,'Venta: '+(obj.producto||'sin descripción'),obj.monto,'Cargo',obj.fecha,'venta_'+obj.id);
     }
   }else if(t==='lead'){
     obj.contacto=document.getElementById('f-contacto').value;obj.interes=document.getElementById('f-interes').value;obj.canal=document.getElementById('f-canal').value;obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
@@ -712,6 +907,11 @@ function saveForm(){
   }else if(t==='cob'){
     obj.cliente=document.getElementById('f-cliente').value;obj.concepto=document.getElementById('f-concepto').value;obj.total=document.getElementById('f-total').value;obj.cobrado=document.getElementById('f-cobrado').value;obj.vencimiento=document.getElementById('f-venc').value;obj.estado=document.getElementById('f-estado').value;
     if(!obj.cliente)return alert('Cliente requerido');
+    // Sync CC: pago registrado
+    const montoCobrado=parseNum(obj.cobrado);
+    if(montoCobrado>0){
+      syncCC(obj.cliente,'Pago: '+obj.concepto,montoCobrado,'Pago',obj.vencimiento,'cob_'+obj.id);
+    }
   }else if(t==='pre'){
     obj.cliente=document.getElementById('f-cliente').value;
     obj.producto=document.getElementById('f-producto').value;
