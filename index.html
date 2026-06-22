@@ -470,9 +470,6 @@ document.getElementById('nav').addEventListener('click',e=>{
   closeSidebar();renderAll();
 });
 
-// INIT
-loadLocal();setStatus('off');renderAll();
-
 // HELPERS
 function prodOpts(sel=''){
   return '<option value="">— Producto/servicio —</option>'+
@@ -975,6 +972,9 @@ function exportarExcel(){const wb=XLSX.utils.book_new();Object.entries(SHEET_MAP
 function exportarHoja(sec){const m=SHEET_MAP[sec];if(!DB[sec]||!DB[sec].length)return alert('Sin datos');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(DB[sec],{header:m.cols}),m.name);XLSX.writeFile(wb,'CRM-'+m.name+'.xlsx');}
 function importarHoja(ev,sec){const f=ev.target.files[0];if(!f)return;const m=SHEET_MAP[sec];if(!confirm('Reemplazará "'+m.name+'". ¿Continuar?')){ev.target.value='';return;}const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1});if(rows.length<2){alert('Vacío.');return;}DB[sec]=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==undefined)).map(r=>{const o={id:generarId()};m.cols.forEach((col,i)=>{o[col]=r[i]!==undefined?String(r[i]):''});return o;});save();renderAll();alert('OK: '+DB[sec].length+' registros.');}catch(err){alert('Error: '+err.message);}ev.target.value='';};r.readAsArrayBuffer(f);}
 function importarExcel(ev){const f=ev.target.files[0];if(!f)return;if(!confirm('Reemplazará todos los datos. ¿Continuar?')){ev.target.value='';return;}const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});let n=0;Object.entries(SHEET_MAP).forEach(([sec,m])=>{const sn=wb.SheetNames.find(n=>n.toLowerCase()===m.name.toLowerCase());if(!sn)return;const ws=wb.Sheets[sn];const rows=XLSX.utils.sheet_to_json(ws,{header:1});if(rows.length>1){DB[sec]=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==undefined)).map(r=>{const o={id:generarId()};m.cols.forEach((col,i)=>{o[col]=r[i]!==undefined?String(r[i]):''});return o;});n+=DB[sec].length;}});save();renderAll();alert('Importado OK ('+n+' registros).');}catch(err){alert('Error: '+err.message);}ev.target.value='';};r.readAsArrayBuffer(f);}
+
+// INIT
+loadLocal();setStatus('off');renderAll();
 </script>
 </body>
 </html>
