@@ -389,6 +389,13 @@ function generarId(){return Date.now().toString(36)+Math.random().toString(36).s
 function parseNum(v){return Math.round((parseFloat(v)||0)*100)/100;}
 function money(v){return '$'+(parseNum(v)).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2});}
 function today(){return new Date().toISOString().slice(0,10);}
+function waLink(tel,msg){
+  if(!tel)return null;
+  let n=tel.replace(/\D/g,'');
+  if(!n)return null;
+  if(!n.startsWith('54'))n='549'+n.replace(/^0/,'');
+  return 'https://wa.me/'+n+(msg?('?text='+encodeURIComponent(msg)):'');
+}
 function fmt(d){if(!d)return '—';const[y,m,dd]=d.split('-');return dd+'/'+m+'/'+y;}
 
 // DRIVE
@@ -584,7 +591,9 @@ function renderClientes(){
   document.getElementById('cli-tbody').innerHTML=rows.length?rows.map((c,i)=>{
     const saldo=getSaldoCC(c.nombre);
     const saldoStr=`<span style="font-family:'DM Mono',monospace;font-size:12px;color:${saldo>=0?'var(--accent)':'var(--danger)'}">${money(saldo)}</span>`;
-    return `<tr><td><strong>${c.nombre}</strong></td><td>${c.tel||'—'}</td><td>${c.email||'—'}</td><td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notas||'—'}</td><td>${saldoStr}</td><td style="display:flex;gap:4px"><button class="action-btn" onclick="editModal('cli',${i})">Ver</button><button class="action-btn" onclick="openCC('${c.nombre.replace(/'/g,"\'")}')">CC</button></td></tr>`;
+    const wa=waLink(c.tel,'Hola '+c.nombre+', te escribo desde Magenta.');
+    const telStr=c.tel?`${c.tel} ${wa?`<a href="${wa}" target="_blank" title="Abrir WhatsApp" style="text-decoration:none">&#128241;</a>`:''}`:'—';
+    return `<tr><td><strong>${c.nombre}</strong></td><td>${telStr}</td><td>${c.email||'—'}</td><td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notas||'—'}</td><td>${saldoStr}</td><td style="display:flex;gap:4px"><button class="action-btn" onclick="editModal('cli',${i})">Ver</button><button class="action-btn" onclick="openCC('${c.nombre.replace(/'/g,"\'")}')">CC</button></td></tr>`;
   }).join(''):`<tr><td colspan="6" class="empty-state">Sin clientes registrados</td></tr>`;
 }
 function renderVentas(){
