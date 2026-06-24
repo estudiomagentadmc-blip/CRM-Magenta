@@ -222,6 +222,9 @@ tbody tr:hover td{background:#FAFAF8}
           <span id="fecha-hoy" style="font-size:12px;color:var(--muted)"></span>
           <button class="btn btn-sm" onclick="exportarExcel()">&#11015; Exportar</button>
           <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(event)"></label>
+          <button class="btn btn-sm" onclick="exportarBackup()" title="Descarga un archivo .json con todos tus datos">&#128190; Backup</button>
+          <label class="btn btn-sm" style="cursor:pointer" title="Restaura un backup .json descargado antes">&#128194; Restaurar<input type="file" accept=".json" style="display:none" onchange="importarBackup(event)"></label>
+          <button class="btn btn-sm btn-danger" onclick="borrarDatosEjemplo()" title="Borra todos los datos cargados (incluyendo los de ejemplo)">&#128465; Borrar todo</button>
         </div>
       </div>
       <div class="section-label">Financiero</div>
@@ -535,6 +538,13 @@ function delCCMov(i){
 // DASHBOARD
 function renderDashboard(){
   document.getElementById('fecha-hoy').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const vacio=!DB.clientes.length&&!DB.ventas.length&&!DB.leads.length&&!DB.cobranzas.length&&!DB.presupuestos.length&&!DB.gastos.length&&!DB.productos.length;
+  if(vacio){
+    document.getElementById('dash-fin').innerHTML='';
+    document.getElementById('dash-ops').innerHTML='';
+    document.getElementById('dash-activity').innerHTML=`<div class="empty-state" style="padding:32px"><p style="margin-bottom:12px">Todavía no cargaste datos. Para ver cómo se ve el CRM en uso podés cargar datos de ejemplo (se pueden borrar después).</p><button class="btn btn-primary btn-sm" onclick="cargarDatosEjemplo()">Cargar datos de ejemplo</button></div>`;
+    return;
+  }
   let ingresados=0,porCobrar=0,cobVenc=0;
   DB.cobranzas.forEach(c=>{
     const t=parseNum(c.total||c.monto),p=parseNum(c.cobrado);
@@ -836,7 +846,15 @@ function syncCC(clienteNombre, concepto, monto, tipo, fecha, refId){
 }
 
 
-function renderAll(){renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();renderProductos();renderMetricas();}
+function actualizarVencidos(){
+  const hoy=today();
+  let changed=false;
+  DB.cobranzas.forEach(c=>{
+    if((c.estado==='Pendiente'||c.estado==='Cobro Parcial')&&c.vencimiento&&c.vencimiento<hoy){c.estado='Vencido';changed=true;}
+  });
+  if(changed)saveLocal();
+}
+function renderAll(){actualizarVencidos();renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();renderProductos();renderMetricas();}
 
 // MODAL FORMS
 const FORMS={
@@ -972,6 +990,67 @@ function exportarExcel(){const wb=XLSX.utils.book_new();Object.entries(SHEET_MAP
 function exportarHoja(sec){const m=SHEET_MAP[sec];if(!DB[sec]||!DB[sec].length)return alert('Sin datos');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(DB[sec],{header:m.cols}),m.name);XLSX.writeFile(wb,'CRM-'+m.name+'.xlsx');}
 function importarHoja(ev,sec){const f=ev.target.files[0];if(!f)return;const m=SHEET_MAP[sec];if(!confirm('Reemplazará "'+m.name+'". ¿Continuar?')){ev.target.value='';return;}const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1});if(rows.length<2){alert('Vacío.');return;}DB[sec]=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==undefined)).map(r=>{const o={id:generarId()};m.cols.forEach((col,i)=>{o[col]=r[i]!==undefined?String(r[i]):''});return o;});save();renderAll();alert('OK: '+DB[sec].length+' registros.');}catch(err){alert('Error: '+err.message);}ev.target.value='';};r.readAsArrayBuffer(f);}
 function importarExcel(ev){const f=ev.target.files[0];if(!f)return;if(!confirm('Reemplazará todos los datos. ¿Continuar?')){ev.target.value='';return;}const r=new FileReader();r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});let n=0;Object.entries(SHEET_MAP).forEach(([sec,m])=>{const sn=wb.SheetNames.find(n=>n.toLowerCase()===m.name.toLowerCase());if(!sn)return;const ws=wb.Sheets[sn];const rows=XLSX.utils.sheet_to_json(ws,{header:1});if(rows.length>1){DB[sec]=rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==undefined)).map(r=>{const o={id:generarId()};m.cols.forEach((col,i)=>{o[col]=r[i]!==undefined?String(r[i]):''});return o;});n+=DB[sec].length;}});save();renderAll();alert('Importado OK ('+n+' registros).');}catch(err){alert('Error: '+err.message);}ev.target.value='';};r.readAsArrayBuffer(f);}
+
+// DATOS DE EJEMPLO
+function cargarDatosEjemplo(){
+  const f=today();
+  DB.clientes.push(
+    {id:generarId(),nombre:'Juan Pérez',tel:'3441123456',email:'juan@mail.com',notas:'Cliente frecuente'},
+    {id:generarId(),nombre:'María Gómez',tel:'3441654321',email:'maria@mail.com',notas:''},
+    {id:generarId(),nombre:'Kiosco Don Pepe',tel:'',email:'',notas:'Compra mensual'}
+  );
+  DB.productos.push(
+    {id:generarId(),nombre:'Servicio de mantenimiento',tipo:'Servicio',precio:15000,descripcion:'Visita mensual'},
+    {id:generarId(),nombre:'Producto X',tipo:'Producto',precio:8000,descripcion:''}
+  );
+  DB.ventas.push(
+    {id:generarId(),cliente:'Juan Pérez',producto:'Servicio de mantenimiento',descripcion:'Servicio de mantenimiento',monto:15000,estado:'Realizada',fecha:f}
+  );
+  DB.leads.push(
+    {id:generarId(),contacto:'Carlos Ruiz',interes:'Producto X',canal:'WhatsApp',estado:'Nuevo',fecha:f},
+    {id:generarId(),contacto:'Ana López',interes:'Servicio de mantenimiento',canal:'Instagram',estado:'En seguimiento',fecha:f}
+  );
+  DB.cobranzas.push(
+    {id:generarId(),cliente:'María Gómez',concepto:'Producto X',total:8000,cobrado:0,vencimiento:f,estado:'Pendiente'},
+    {id:generarId(),cliente:'Kiosco Don Pepe',concepto:'Mercadería',total:25000,cobrado:25000,vencimiento:f,estado:'Cobrado'}
+  );
+  DB.presupuestos.push(
+    {id:generarId(),cliente:'Ana López',producto:'Servicio de mantenimiento',descripcion:'Servicio de mantenimiento',monto:15000,estado:'Enviada',fecha:f}
+  );
+  DB.gastos.push(
+    {id:generarId(),concepto:'Alquiler',categoria:'Fijos',monto:60000,estado:'Pagado',fecha:f},
+    {id:generarId(),concepto:'Insumos',categoria:'Varios',monto:12000,estado:'Pendiente',fecha:f}
+  );
+  save();renderAll();
+}
+function borrarDatosEjemplo(){
+  if(!confirm('¿Borrar todos los datos cargados? Esta acción no se puede deshacer.'))return;
+  Object.keys(DB).forEach(k=>{DB[k]=Array.isArray(DB[k])?[]:{};});
+  save();renderAll();
+}
+
+// BACKUP MANUAL
+function exportarBackup(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='backup-crm-magenta-'+today()+'.json';
+  a.click();
+}
+function importarBackup(ev){
+  const f=ev.target.files[0];if(!f)return;
+  if(!confirm('Esto reemplazará todos los datos actuales con los del backup. ¿Continuar?')){ev.target.value='';return;}
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      Object.keys(DB).forEach(k=>{if(data[k])DB[k]=data[k];});
+      save();renderAll();alert('Backup restaurado correctamente.');
+    }catch(err){alert('Archivo inválido: '+err.message);}
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
 
 // INIT
 loadLocal();setStatus('off');renderAll();
