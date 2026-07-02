@@ -83,6 +83,8 @@ nav button.active svg{opacity:1}
 .btn-danger{color:var(--danger);border-color:var(--danger-light)}
 .btn-danger:hover{background:var(--danger-light)}
 .btn-sm{padding:5px 10px;font-size:12px}
+.ic{width:14px;height:14px;vertical-align:-2px;margin-right:5px;flex-shrink:0}
+.ic-lg{width:18px;height:18px;margin-right:0;vertical-align:middle;flex-shrink:0}
 .btn-google{background:#fff;border:1px solid var(--border2);color:var(--text);display:flex;align-items:center;gap:8px;font-weight:500;justify-content:center;width:100%;padding:10px 16px}
 .btn-google:hover{background:var(--bg)}
 
@@ -263,11 +265,11 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
           <span id="fecha-hoy" style="font-size:12px;color:var(--muted)"></span>
-          <button class="btn btn-sm" onclick="exportarExcel()">&#11015; Exportar</button>
-          <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(event)"></label>
-          <button class="btn btn-sm" onclick="exportarBackup()" title="Descarga un archivo .json con todos tus datos">&#128190; Backup</button>
-          <label class="btn btn-sm" style="cursor:pointer" title="Restaura un backup .json descargado antes">&#128194; Restaurar<input type="file" accept=".json" style="display:none" onchange="importarBackup(event)"></label>
-          <button class="btn btn-sm btn-danger" onclick="borrarDatosEjemplo()" title="Borra todos los datos cargados (incluyendo los de ejemplo)">&#128465; Borrar todo</button>
+          <button class="btn btn-sm" onclick="exportarExcel()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+          <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(event)"></label>
+          <button class="btn btn-sm" onclick="exportarBackup()" title="Descarga un archivo .json con todos tus datos"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Backup</button>
+          <label class="btn btn-sm" style="cursor:pointer" title="Restaura un backup .json descargado antes"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Restaurar<input type="file" accept=".json" style="display:none" onchange="importarBackup(event)"></label>
+          <button class="btn btn-sm btn-danger" onclick="borrarDatosEjemplo()" title="Borra todos los datos cargados (incluyendo los de ejemplo)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Borrar todo</button>
         </div>
       </div>
       <div id="dash-alert"></div>
@@ -284,8 +286,8 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="page-header"><div class="page-title">Clientes</div><button class="btn btn-primary" onclick="openModal('cli')">+ Nuevo cliente</button></div>
       <div class="toolbar">
         <input id="cli-search" placeholder="Buscar..." oninput="renderClientes()">
-        <button class="btn btn-sm" onclick="exportarHoja('clientes')">&#11015; Exportar</button>
-        <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'clientes')"></label>
+        <button class="btn btn-sm" onclick="exportarHoja('clientes')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'clientes')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
         <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Notas</th><th>Saldo CC</th><th></th></tr></thead>
@@ -315,8 +317,8 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="toolbar">
         <input id="ven-search" placeholder="Buscar..." oninput="renderVentas()">
         <select id="ven-filter" onchange="renderVentas()"><option value="">Todos</option><option>Consulta</option><option>Realizada</option></select>
-        <button class="btn btn-sm" onclick="exportarHoja('ventas')">&#11015; Exportar</button>
-        <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ventas')"></label>
+        <button class="btn btn-sm" onclick="exportarHoja('ventas')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'ventas')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
         <thead><tr><th>Cliente</th><th>Producto/Servicio</th><th>Monto</th><th>Estado</th><th>Fecha</th><th style="min-width:140px">Acciones</th></tr></thead>
@@ -330,8 +332,8 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="toolbar">
         <input id="lead-search" placeholder="Buscar..." oninput="renderLeads()">
         <select id="lead-filter" onchange="renderLeads()"><option value="">Todos</option><option>Nuevo</option><option>En seguimiento</option><option>Convertido</option><option>Perdido</option></select>
-        <button class="btn btn-sm" onclick="exportarHoja('leads')">&#11015; Exportar</button>
-        <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'leads')"></label>
+        <button class="btn btn-sm" onclick="exportarHoja('leads')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'leads')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
         <thead><tr><th>Contacto</th><th>Interés</th><th>Canal</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
@@ -345,8 +347,8 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="toolbar">
         <input id="cob-search" placeholder="Buscar..." oninput="renderCobranzas()">
         <select id="cob-filter" onchange="renderCobranzas()"><option value="">Todos</option><option>Pendiente</option><option>Cobro Parcial</option><option>Cobrado</option><option>Vencido</option></select>
-        <button class="btn btn-sm" onclick="exportarHoja('cobranzas')">&#11015; Exportar</button>
-        <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'cobranzas')"></label>
+        <button class="btn btn-sm" onclick="exportarHoja('cobranzas')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'cobranzas')"></label>
       </div>
       <div class="cob-summary" id="cob-summary"></div>
       <div class="cob-cards" id="cob-list"></div>
@@ -358,8 +360,8 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="toolbar">
         <input id="pre-search" placeholder="Buscar..." oninput="renderPresupuestos()">
         <select id="pre-filter" onchange="renderPresupuestos()"><option value="">Todos</option><option>Borrador</option><option>Enviada</option><option>Aceptada</option><option>Rechazada</option></select>
-        <button class="btn btn-sm" onclick="exportarHoja('presupuestos')">&#11015; Exportar</button>
-        <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'presupuestos')"></label>
+        <button class="btn btn-sm" onclick="exportarHoja('presupuestos')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'presupuestos')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
         <thead><tr><th>Cliente</th><th>Producto/Servicio</th><th>Monto</th><th>Estado</th><th>Fecha</th><th style="min-width:100px">Acciones</th></tr></thead>
@@ -373,8 +375,8 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="toolbar">
         <input id="gas-search" placeholder="Buscar..." oninput="renderGastos()">
         <select id="gas-filter" onchange="renderGastos()"><option value="">Todos</option><option>Pagado</option><option>Pendiente</option></select>
-        <button class="btn btn-sm" onclick="exportarHoja('gastos')">&#11015; Exportar</button>
-        <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'gastos')"></label>
+        <button class="btn btn-sm" onclick="exportarHoja('gastos')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'gastos')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
         <thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
@@ -388,8 +390,8 @@ tbody tr:hover td{background:#FAFAF8}
       <div class="toolbar">
         <input id="prod-search" placeholder="Buscar..." oninput="renderProductos()">
         <select id="prod-filter" onchange="renderProductos()"><option value="">Todos</option><option>Producto</option><option>Servicio</option></select>
-        <button class="btn btn-sm" onclick="exportarHoja('productos')">&#11015; Exportar</button>
-        <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'productos')"></label>
+        <button class="btn btn-sm" onclick="exportarHoja('productos')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
+        <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'productos')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
         <thead><tr><th>Nombre</th><th>Tipo</th><th>Precio</th><th>Descripción</th><th></th></tr></thead>
@@ -545,7 +547,7 @@ function renderCC(){
   sdiv.textContent=money(saldo);
   sdiv.className='cc-saldo '+(saldo>=0?'positivo':'negativo');
   let running=0;
-  all.forEach((m,i)=>{running+=(m.tipo==='Cargo'?-parseNum(m.monto):parseNum(m.monto));rows.push(`<tr><td>${fmt(m.fecha)}</td><td>${m.concepto}</td><td>${badge(m.tipo==='Cargo'?'b-red':'b-green') }<span class="badge ${m.tipo==='Cargo'?'b-red':'b-green'}">${m.tipo}</span></td><td style="font-family:'DM Mono',monospace">${money(m.monto)}</td><td style="font-family:'DM Mono',monospace;color:${running>=0?'var(--accent)':'var(--danger)'}">${money(running)}</td><td><button class="action-btn" onclick="delCCMov(${i})">&#10005;</button></td></tr>`);});
+  all.forEach((m,i)=>{running+=(m.tipo==='Cargo'?-parseNum(m.monto):parseNum(m.monto));rows.push(`<tr><td>${fmt(m.fecha)}</td><td>${m.concepto}</td><td>${badge(m.tipo==='Cargo'?'b-red':'b-green') }<span class="badge ${m.tipo==='Cargo'?'b-red':'b-green'}">${m.tipo}</span></td><td style="font-family:'DM Mono',monospace">${money(m.monto)}</td><td style="font-family:'DM Mono',monospace;color:${running>=0?'var(--accent)':'var(--danger)'}">${money(running)}</td><td><button class="action-btn" onclick="delCCMov(${i})" title="Eliminar"><svg class="ic" style="margin-right:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td></tr>`);});
   document.getElementById('cc-tbody').innerHTML=rows.length?rows.join(''):'<tr><td colspan="6" class="empty-state">Sin movimientos</td></tr>';
 }
 function openCCMovimiento(){
@@ -592,9 +594,9 @@ function renderDashboard(){
   const _al=document.getElementById('dash-alert');
   if(_al){
     if(_rc.vencidas>0){
-      _al.innerHTML=`<div class="alert-banner danger"><span style="font-size:18px">&#9888;&#65039;</span><div class="ab-txt">Tenés <strong>${_rc.vencidas}</strong> cobranza${_rc.vencidas>1?'s':''} vencida${_rc.vencidas>1?'s':''} por <strong>${money(_rc.vencMonto)}</strong>.</div><button class="btn btn-sm" onclick="irAPagina('cobranzas')">Ver cobranzas &rarr;</button></div>`;
+      _al.innerHTML=`<div class="alert-banner danger"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div class="ab-txt">Tenés <strong>${_rc.vencidas}</strong> cobranza${_rc.vencidas>1?'s':''} vencida${_rc.vencidas>1?'s':''} por <strong>${money(_rc.vencMonto)}</strong>.</div><button class="btn btn-sm" onclick="irAPagina('cobranzas')">Ver cobranzas &rarr;</button></div>`;
     }else if(_rc.semana>0){
-      _al.innerHTML=`<div class="alert-banner warn"><span style="font-size:18px">&#128276;</span><div class="ab-txt"><strong>${_rc.semana}</strong> cobranza${_rc.semana>1?'s':''} vence${_rc.semana>1?'n':''} esta semana.</div><button class="btn btn-sm" onclick="irAPagina('cobranzas')">Ver cobranzas &rarr;</button></div>`;
+      _al.innerHTML=`<div class="alert-banner warn"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><div class="ab-txt"><strong>${_rc.semana}</strong> cobranza${_rc.semana>1?'s':''} vence${_rc.semana>1?'n':''} esta semana.</div><button class="btn btn-sm" onclick="irAPagina('cobranzas')">Ver cobranzas &rarr;</button></div>`;
     }else{_al.innerHTML='';}
   }
   let ingresados=0,porCobrar=0,cobVenc=0;
@@ -651,7 +653,7 @@ function renderClientes(){
     const saldo=getSaldoCC(c.nombre);
     const saldoStr=`<span style="font-family:'DM Mono',monospace;font-size:12px;color:${saldo>=0?'var(--accent)':'var(--danger)'}">${money(saldo)}</span>`;
     const wa=waLink(c.tel,'Hola '+c.nombre+', te escribo desde Magenta.');
-    const telStr=c.tel?`${c.tel} ${wa?`<a href="${wa}" target="_blank" title="Abrir WhatsApp" style="text-decoration:none">&#128241;</a>`:''}`:'—';
+    const telStr=c.tel?`${c.tel} ${wa?`<a href="${wa}" target="_blank" title="Abrir WhatsApp" style="text-decoration:none;color:var(--accent)"><svg class="ic" style="margin-right:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>`:''}`:'—';
     return `<tr><td><strong>${c.nombre}</strong></td><td>${telStr}</td><td>${c.email||'—'}</td><td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notas||'—'}</td><td>${saldoStr}</td><td style="display:flex;gap:4px"><button class="action-btn" onclick="editModal('cli',${i})">Ver</button><button class="action-btn" onclick="openCC('${c.nombre.replace(/'/g,"\'")}')">CC</button></td></tr>`;
   }).join(''):`<tr><td colspan="6" class="empty-state">Sin clientes registrados</td></tr>`;
 }
@@ -777,7 +779,7 @@ function renderCobranzas(){
       acciones=`<button class="btn btn-sm" onclick="reabrirCobranza('${c.id}')">Reabrir</button>`+
         `<button class="btn btn-sm" onclick="editCobById('${c.id}')">Editar</button>`;
     }else{
-      acciones=`<button class="btn btn-wa btn-sm" onclick="recordarCobranza('${c.id}')"${tel?'':' title="Sin teléfono cargado"'}>&#128241; WhatsApp</button>`+
+      acciones=`<button class="btn btn-wa btn-sm" onclick="recordarCobranza('${c.id}')"${tel?'':' title="Sin teléfono cargado"'}><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>WhatsApp</button>`+
         `<button class="btn btn-sm" onclick="cobrarParte('${c.id}')">Cobré parte</button>`+
         `<button class="btn btn-primary btn-sm" onclick="cobrarTodo('${c.id}')">Cobré todo</button>`+
         `<button class="btn btn-sm" onclick="editCobById('${c.id}')">Editar</button>`;
