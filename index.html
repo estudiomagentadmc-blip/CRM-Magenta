@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google-site-verification" content="ZMQ5pOg4AVhz0ivSW3PP-sKiCfQO-wbIXeUYzEKmaIM" />
 <link rel="icon" type="image/png" href="isologo.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2D5F3F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CRM Magenta">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>CRM Magenta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -1055,6 +1061,13 @@ function importarBackup(ev){
 
 // INIT
 loadLocal();setStatus('off');renderAll();
+
+// PWA — registrar service worker (permite instalar la app y usarla offline)
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
