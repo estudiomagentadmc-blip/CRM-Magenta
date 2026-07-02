@@ -154,6 +154,12 @@ tbody tr:hover td{background:#FAFAF8}
 .alert-banner.warn{background:var(--warn-light);border:1px solid var(--warn)}
 .alert-banner .ab-txt{flex:1;min-width:180px}
 
+/* INSTALL BAR */
+.install-bar{display:flex;align-items:center;gap:11px;padding:11px 15px;border-radius:var(--radius);margin-bottom:16px;background:var(--accent-light);border:1px solid var(--accent);font-size:13px;flex-wrap:wrap}
+.install-bar .ib-txt{flex:1;min-width:160px;color:var(--accent)}
+.install-bar .ib-close{background:none;border:none;cursor:pointer;color:var(--accent);padding:4px;line-height:0;opacity:0.7}
+.install-bar .ib-close:hover{opacity:1}
+
 /* COBRANZAS ACCIONABLES */
 .cob-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .cob-sum{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;min-width:0}
@@ -256,6 +262,12 @@ tbody tr:hover td{background:#FAFAF8}
   </aside>
 
   <main class="main">
+    <div class="install-bar" id="install-bar" style="display:none">
+      <svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      <div class="ib-txt"><strong>Instalá CRM Magenta</strong> en tu dispositivo para abrirlo como una app, sin el navegador.</div>
+      <button class="btn btn-primary btn-sm" onclick="instalarApp()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Instalar app</button>
+      <button class="ib-close" onclick="ocultarInstall()" title="Ahora no"><svg class="ic" style="margin-right:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <div class="page-header">
@@ -1228,6 +1240,26 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('service-worker.js').catch(()=>{});
   });
 }
+
+// PWA — instalación con un toque
+let deferredPrompt=null;
+function esStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;}
+function esIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent);}
+function mostrarInstall(){const b=document.getElementById('install-bar');if(b&&!esStandalone()&&sessionStorage.getItem('hideInstall')!=='1')b.style.display='';}
+function ocultarInstall(){const b=document.getElementById('install-bar');if(b)b.style.display='none';try{sessionStorage.setItem('hideInstall','1');}catch(e){}}
+function instalarApp(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(()=>{deferredPrompt=null;const b=document.getElementById('install-bar');if(b)b.style.display='none';});
+  }else if(esIOS()){
+    alert('Para instalar en iPhone / iPad (Safari):\n\n1. Tocá el botón Compartir (el cuadrado con la flecha hacia arriba).\n2. Elegí "Agregar a inicio".\n\nQueda como una app más en tu pantalla de inicio.');
+  }else{
+    alert('Para instalar:\n\nAbrí el menú del navegador (los tres puntitos) y elegí "Instalar app" o "Agregar a pantalla de inicio".');
+  }
+}
+window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();deferredPrompt=e;mostrarInstall();});
+window.addEventListener('appinstalled',()=>{deferredPrompt=null;ocultarInstall();});
+if(esIOS()&&!esStandalone())mostrarInstall();
 </script>
 </body>
 </html>
