@@ -146,6 +146,42 @@ tbody tr:hover td{background:#FAFAF8}
 .login-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
 .login-box .skip{font-size:12px;color:var(--muted);margin-top:12px;cursor:pointer;text-decoration:underline;display:block}
 
+/* ALERTA / BANNER */
+.alert-banner{display:flex;align-items:center;gap:11px;padding:12px 15px;border-radius:var(--radius);margin-bottom:16px;font-size:13px;flex-wrap:wrap}
+.alert-banner.danger{background:var(--danger-light);border:1px solid var(--danger)}
+.alert-banner.warn{background:var(--warn-light);border:1px solid var(--warn)}
+.alert-banner .ab-txt{flex:1;min-width:180px}
+
+/* COBRANZAS ACCIONABLES */
+.cob-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.cob-sum{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;min-width:0}
+.cob-sum .n{font-size:clamp(15px,4vw,20px);font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cob-sum .l{font-size:11px;color:var(--muted);margin-top:2px}
+.cob-sum.tot{border-left:3px solid var(--accent)}
+.cob-sum.venc{border-left:3px solid var(--danger)}
+.cob-sum.sem{border-left:3px solid var(--warn)}
+.cob-cards{display:flex;flex-direction:column;gap:10px}
+.cob-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:var(--radius);padding:13px 15px;display:flex;flex-direction:column;gap:10px}
+.cob-card.st-venc{border-left-color:var(--danger)}
+.cob-card.st-pend{border-left-color:var(--warn)}
+.cob-card.st-parc{border-left-color:var(--info)}
+.cob-card.st-ok{border-left-color:var(--accent);opacity:0.7}
+.cob-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.cob-cli{font-weight:600;font-size:14px}
+.cob-con{font-size:12px;color:var(--muted);margin-top:1px}
+.cob-saldo{text-align:right;flex-shrink:0}
+.cob-saldo .s{font-family:'DM Mono',monospace;font-size:16px;font-weight:600}
+.cob-saldo .venctxt{font-size:11px;margin-top:2px}
+.cob-actions{display:flex;gap:7px;flex-wrap:wrap}
+.cob-actions .btn{flex:1 1 auto;min-width:92px;text-align:center;justify-content:center}
+.btn-wa{background:#25D366;color:#fff;border-color:#25D366;font-weight:500}
+.btn-wa:hover{background:#1da851;border-color:#1da851}
+@media(max-width:700px){
+  .cob-summary{gap:8px}
+  .cob-sum{padding:10px 11px}
+  .cob-actions .btn{flex:1 1 46%;min-width:0}
+}
+
 /* RESPONSIVE */
 @media(max-width:700px){
   :root{--sidebar:0px}
@@ -234,6 +270,7 @@ tbody tr:hover td{background:#FAFAF8}
           <button class="btn btn-sm btn-danger" onclick="borrarDatosEjemplo()" title="Borra todos los datos cargados (incluyendo los de ejemplo)">&#128465; Borrar todo</button>
         </div>
       </div>
+      <div id="dash-alert"></div>
       <div class="section-label">Financiero</div>
       <div class="metrics" id="dash-fin"></div>
       <div class="section-label" style="margin-top:16px">Operacional</div>
@@ -311,10 +348,8 @@ tbody tr:hover td{background:#FAFAF8}
         <button class="btn btn-sm" onclick="exportarHoja('cobranzas')">&#11015; Exportar</button>
         <label class="btn btn-sm" style="cursor:pointer">&#11014; Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'cobranzas')"></label>
       </div>
-      <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Cliente</th><th>Concepto</th><th>Total</th><th>Abonado</th><th>Estado</th><th></th></tr></thead>
-        <tbody id="cob-tbody"></tbody>
-      </table></div></div>
+      <div class="cob-summary" id="cob-summary"></div>
+      <div class="cob-cards" id="cob-list"></div>
     </div>
 
     <!-- PRESUPUESTOS -->
@@ -547,10 +582,20 @@ function renderDashboard(){
   document.getElementById('fecha-hoy').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const vacio=!DB.clientes.length&&!DB.ventas.length&&!DB.leads.length&&!DB.cobranzas.length&&!DB.presupuestos.length&&!DB.gastos.length&&!DB.productos.length;
   if(vacio){
+    const _al=document.getElementById('dash-alert');if(_al)_al.innerHTML='';
     document.getElementById('dash-fin').innerHTML='';
     document.getElementById('dash-ops').innerHTML='';
     document.getElementById('dash-activity').innerHTML=`<div class="empty-state" style="padding:32px"><p style="margin-bottom:12px">Todavía no cargaste datos. Para ver cómo se ve el CRM en uso podés cargar datos de ejemplo (se pueden borrar después).</p><button class="btn btn-primary btn-sm" onclick="cargarDatosEjemplo()">Cargar datos de ejemplo</button></div>`;
     return;
+  }
+  const _rc=resumenCobranzas();
+  const _al=document.getElementById('dash-alert');
+  if(_al){
+    if(_rc.vencidas>0){
+      _al.innerHTML=`<div class="alert-banner danger"><span style="font-size:18px">&#9888;&#65039;</span><div class="ab-txt">Tenés <strong>${_rc.vencidas}</strong> cobranza${_rc.vencidas>1?'s':''} vencida${_rc.vencidas>1?'s':''} por <strong>${money(_rc.vencMonto)}</strong>.</div><button class="btn btn-sm" onclick="irAPagina('cobranzas')">Ver cobranzas &rarr;</button></div>`;
+    }else if(_rc.semana>0){
+      _al.innerHTML=`<div class="alert-banner warn"><span style="font-size:18px">&#128276;</span><div class="ab-txt"><strong>${_rc.semana}</strong> cobranza${_rc.semana>1?'s':''} vence${_rc.semana>1?'n':''} esta semana.</div><button class="btn btn-sm" onclick="irAPagina('cobranzas')">Ver cobranzas &rarr;</button></div>`;
+    }else{_al.innerHTML='';}
   }
   let ingresados=0,porCobrar=0,cobVenc=0;
   DB.cobranzas.forEach(c=>{
@@ -631,10 +676,120 @@ function renderLeads(){
   const rows=DB.leads.filter(l=>(!q||(l.contacto+l.interes).toLowerCase().includes(q))&&(!f||l.estado===f));
   document.getElementById('lead-tbody').innerHTML=rows.length?rows.map((l,i)=>`<tr><td><strong>${l.contacto}</strong></td><td>${l.interes||'—'}</td><td>${l.canal||'—'}</td><td>${badge(l.estado)}</td><td>${fmt(l.fecha)}</td><td><button class="action-btn" onclick="editModal('lead',${i})">Ver</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin consultas</td></tr>`;
 }
+// ——— COBRANZAS: helpers del "loop de cobro" ———
+function cobById(id){return DB.cobranzas.find(c=>c.id===id);}
+function telDeCliente(nombre){const c=DB.clientes.find(x=>x.nombre===nombre);return c?c.tel:'';}
+function diasVenc(fecha){if(!fecha)return null;const hoy=new Date(today()+'T00:00:00');const v=new Date(fecha+'T00:00:00');return Math.round((v-hoy)/86400000);}
+function textoVenc(fecha,estado){
+  if(estado==='Cobrado')return 'Cobrada';
+  const d=diasVenc(fecha);
+  if(d===null)return 'Sin vencimiento';
+  if(d<0)return 'Venció hace '+Math.abs(d)+(Math.abs(d)===1?' día':' días');
+  if(d===0)return 'Vence hoy';
+  if(d===1)return 'Vence mañana';
+  return 'Vence en '+d+' días';
+}
+function resumenCobranzas(){
+  let porCobrar=0,vencidas=0,semana=0,vencMonto=0;
+  DB.cobranzas.forEach(c=>{
+    if(c.estado==='Cobrado')return;
+    const saldo=parseNum(c.total||c.monto)-parseNum(c.cobrado);
+    if(saldo<=0)return;
+    porCobrar+=saldo;
+    if(c.estado==='Vencido'){vencidas++;vencMonto+=saldo;}
+    else{const d=diasVenc(c.vencimiento);if(d!==null&&d>=0&&d<=7)semana++;}
+  });
+  return {porCobrar,vencidas,semana,vencMonto};
+}
+function ordenCob(c){if(c.estado==='Cobrado')return 1e9;const d=diasVenc(c.vencimiento);return d===null?1e8:d;}
+
+function irAPagina(p){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  const nb=document.querySelector('nav button[data-page="'+p+'"]');if(nb)nb.classList.add('active');
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  const pg=document.getElementById('page-'+p);if(pg)pg.classList.add('active');
+  closeSidebar();window.scrollTo(0,0);
+}
+
+function mensajeRecordatorio(c,saldo){
+  const nombre=(c.cliente||'').trim().split(' ')[0]||c.cliente||'';
+  let m='Hola '+nombre+', ¿cómo estás? Te recuerdo el saldo pendiente de '+money(saldo);
+  if(c.concepto)m+=' por '+c.concepto;
+  if(c.vencimiento)m+=' con vencimiento el '+fmt(c.vencimiento);
+  m+='. Cualquier cosa avisame. ¡Gracias! 🙌';
+  return m;
+}
+function recordarCobranza(id){
+  const c=cobById(id);if(!c)return;
+  const tel=telDeCliente(c.cliente);
+  const saldo=parseNum(c.total||c.monto)-parseNum(c.cobrado);
+  const link=waLink(tel,mensajeRecordatorio(c,saldo));
+  if(!link){alert('Este cliente no tiene teléfono cargado.\n\nAgregale el teléfono en la sección Clientes para poder mandarle el recordatorio por WhatsApp.');return;}
+  window.open(link,'_blank');
+}
+function registrarPagoCC(c){
+  const totalCobrado=parseNum(c.cobrado);
+  if(totalCobrado>0)syncCC(c.cliente,'Pago: '+(c.concepto||'Cobranza'),totalCobrado,'Pago',c.vencimiento||today(),'cob_'+c.id);
+}
+function cobrarTodo(id){
+  const c=cobById(id);if(!c)return;
+  const total=parseNum(c.total||c.monto),saldo=total-parseNum(c.cobrado);
+  if(!confirm('¿Registrar el cobro total de '+c.cliente+'?\nSaldo a cobrar: '+money(saldo)))return;
+  c.cobrado=total;c.estado='Cobrado';
+  registrarPagoCC(c);save();renderAll();
+}
+function cobrarParte(id){
+  const c=cobById(id);if(!c)return;
+  const total=parseNum(c.total||c.monto),saldo=total-parseNum(c.cobrado);
+  const val=prompt('¿Cuánto pagó '+c.cliente+'?\nSaldo pendiente: '+money(saldo),'');
+  if(val===null)return;
+  const monto=parseNum((val||'').replace(',','.'));
+  if(monto<=0)return alert('Ingresá un monto válido.');
+  c.cobrado=parseNum(c.cobrado)+monto;
+  if(c.cobrado>=total){c.cobrado=total;c.estado='Cobrado';}
+  else c.estado='Cobro Parcial';
+  registrarPagoCC(c);save();renderAll();
+}
+function reabrirCobranza(id){const c=cobById(id);if(!c)return;c.estado=parseNum(c.cobrado)>0?'Cobro Parcial':'Pendiente';save();renderAll();}
+function editCobById(id){const idx=DB.cobranzas.findIndex(c=>c.id===id);if(idx>-1)editModal('cob',idx);}
+
 function renderCobranzas(){
   const q=(document.getElementById('cob-search').value||'').toLowerCase(),f=document.getElementById('cob-filter').value;
-  const rows=DB.cobranzas.filter(c=>(!q||(c.cliente+c.concepto).toLowerCase().includes(q))&&(!f||c.estado===f));
-  document.getElementById('cob-tbody').innerHTML=rows.length?rows.map((c,i)=>`<tr><td>${c.cliente||'—'}</td><td>${c.concepto||'—'}</td><td style="font-family:'DM Mono',monospace">${money(c.total||c.monto)}</td><td style="font-family:'DM Mono',monospace">${money(c.cobrado)}</td><td>${badge(c.estado)}</td><td><button class="action-btn" onclick="editModal('cob',${i})">Ver</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin cobranzas</td></tr>`;
+  const r=resumenCobranzas();
+  const sum=document.getElementById('cob-summary');
+  if(sum)sum.innerHTML=
+    `<div class="cob-sum tot"><div class="n">${money(r.porCobrar)}</div><div class="l">Total por cobrar</div></div>`+
+    `<div class="cob-sum venc"><div class="n">${r.vencidas}</div><div class="l">Vencidas</div></div>`+
+    `<div class="cob-sum sem"><div class="n">${r.semana}</div><div class="l">Vencen esta semana</div></div>`;
+  let rows=DB.cobranzas.filter(c=>(!q||((c.cliente||'')+(c.concepto||'')).toLowerCase().includes(q))&&(!f||c.estado===f));
+  rows=rows.slice().sort((a,b)=>ordenCob(a)-ordenCob(b));
+  const cont=document.getElementById('cob-list');if(!cont)return;
+  if(!rows.length){cont.innerHTML='<div class="empty-state" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">Sin cobranzas</div>';return;}
+  cont.innerHTML=rows.map(c=>{
+    const total=parseNum(c.total||c.monto),cobrado=parseNum(c.cobrado),saldo=total-cobrado;
+    const st=c.estado==='Cobrado'?'st-ok':c.estado==='Vencido'?'st-venc':c.estado==='Cobro Parcial'?'st-parc':'st-pend';
+    const d=diasVenc(c.vencimiento);
+    const venccol=c.estado==='Cobrado'?'var(--accent)':(d!==null&&d<0?'var(--danger)':(d!==null&&d<=7?'var(--warn)':'var(--muted)'));
+    const tel=telDeCliente(c.cliente);
+    const cobradoLine=(cobrado>0&&c.estado!=='Cobrado')?`<div class="cob-con">Abonado ${money(cobrado)} de ${money(total)}</div>`:'';
+    let acciones;
+    if(c.estado==='Cobrado'){
+      acciones=`<button class="btn btn-sm" onclick="reabrirCobranza('${c.id}')">Reabrir</button>`+
+        `<button class="btn btn-sm" onclick="editCobById('${c.id}')">Editar</button>`;
+    }else{
+      acciones=`<button class="btn btn-wa btn-sm" onclick="recordarCobranza('${c.id}')"${tel?'':' title="Sin teléfono cargado"'}>&#128241; WhatsApp</button>`+
+        `<button class="btn btn-sm" onclick="cobrarParte('${c.id}')">Cobré parte</button>`+
+        `<button class="btn btn-primary btn-sm" onclick="cobrarTodo('${c.id}')">Cobré todo</button>`+
+        `<button class="btn btn-sm" onclick="editCobById('${c.id}')">Editar</button>`;
+    }
+    return `<div class="cob-card ${st}">
+      <div class="cob-top">
+        <div style="min-width:0"><div class="cob-cli">${c.cliente||'—'}</div><div class="cob-con">${c.concepto||'Sin concepto'}</div>${cobradoLine}</div>
+        <div class="cob-saldo"><div class="s">${money(saldo)}</div><div class="venctxt" style="color:${venccol}">${textoVenc(c.vencimiento,c.estado)}</div></div>
+      </div>
+      <div class="cob-actions">${acciones}</div>
+    </div>`;
+  }).join('');
 }
 function renderPresupuestos(){
   const q=(document.getElementById('pre-search').value||'').toLowerCase(),f=document.getElementById('pre-filter').value;
@@ -857,6 +1012,7 @@ function actualizarVencidos(){
   const hoy=today();
   let changed=false;
   DB.cobranzas.forEach(c=>{
+    if(!c.id){c.id=generarId();changed=true;}
     if((c.estado==='Pendiente'||c.estado==='Cobro Parcial')&&c.vencimiento&&c.vencimiento<hoy){c.estado='Vencido';changed=true;}
   });
   if(changed)saveLocal();
@@ -1001,6 +1157,7 @@ function importarExcel(ev){const f=ev.target.files[0];if(!f)return;if(!confirm('
 // DATOS DE EJEMPLO
 function cargarDatosEjemplo(){
   const f=today();
+  const dSum=(n)=>{const d=new Date(f+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
   DB.clientes.push(
     {id:generarId(),nombre:'Juan Pérez',tel:'3441123456',email:'juan@mail.com',notas:'Cliente frecuente'},
     {id:generarId(),nombre:'María Gómez',tel:'3441654321',email:'maria@mail.com',notas:''},
@@ -1018,8 +1175,9 @@ function cargarDatosEjemplo(){
     {id:generarId(),contacto:'Ana López',interes:'Servicio de mantenimiento',canal:'Instagram',estado:'En seguimiento',fecha:f}
   );
   DB.cobranzas.push(
-    {id:generarId(),cliente:'María Gómez',concepto:'Producto X',total:8000,cobrado:0,vencimiento:f,estado:'Pendiente'},
-    {id:generarId(),cliente:'Kiosco Don Pepe',concepto:'Mercadería',total:25000,cobrado:25000,vencimiento:f,estado:'Cobrado'}
+    {id:generarId(),cliente:'María Gómez',concepto:'Producto X',total:8000,cobrado:3000,vencimiento:dSum(-5),estado:'Cobro Parcial'},
+    {id:generarId(),cliente:'Juan Pérez',concepto:'Servicio de mantenimiento',total:15000,cobrado:0,vencimiento:dSum(3),estado:'Pendiente'},
+    {id:generarId(),cliente:'Kiosco Don Pepe',concepto:'Mercadería',total:25000,cobrado:25000,vencimiento:dSum(-2),estado:'Cobrado'}
   );
   DB.presupuestos.push(
     {id:generarId(),cliente:'Ana López',producto:'Servicio de mantenimiento',descripcion:'Servicio de mantenimiento',monto:15000,estado:'Enviada',fecha:f}
