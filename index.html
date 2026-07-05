@@ -400,13 +400,14 @@ tbody tr:hover td{background:#FAFAF8}
     <div class="page" id="page-productos">
       <div class="page-header"><div class="page-title">Productos / Servicios</div><button class="btn btn-primary" onclick="openModal('prod')">+ Nuevo producto</button></div>
       <div class="toolbar">
-        <input id="prod-search" placeholder="Buscar..." oninput="renderProductos()">
+        <input id="prod-search" placeholder="Buscar por nombre o código..." oninput="renderProductos()">
         <select id="prod-filter" onchange="renderProductos()"><option value="">Todos</option><option>Producto</option><option>Servicio</option></select>
+        <select id="prod-cat" onchange="renderProductos()"><option value="">Todas las categorías</option></select>
         <button class="btn btn-sm" onclick="exportarHoja('productos')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
         <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarHoja(event,'productos')"></label>
       </div>
       <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Nombre</th><th>Tipo</th><th>Precio</th><th>Descripción</th><th></th></tr></thead>
+        <thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Tipo</th><th>Costo</th><th>Precio</th><th>Margen</th><th></th></tr></thead>
         <tbody id="prod-tbody"></tbody>
       </table></div></div>
     </div>
@@ -531,10 +532,92 @@ document.getElementById('nav').addEventListener('click',e=>{
 
 // HELPERS
 function prodOpts(sel=''){
+  const existe=!sel||DB.productos.some(p=>p.nombre===sel);
   return '<option value="">— Producto/servicio —</option>'+
-    DB.productos.map(p=>`<option value="${p.nombre}" ${p.nombre===sel?'selected':''}>${p.nombre} ${p.precio?'('+money(p.precio)+')':''}</option>`).join('');
+    (existe?'':`<option value="${sel}" selected>${sel}</option>`)+
+    DB.productos.map(p=>`<option value="${p.nombre}" ${p.nombre===sel?'selected':''}>${p.nombre} ${p.precio?'('+money(p.precio)+')':''}</option>`).join('')+
+    '<option value="__nuevo__">+ Crear producto/servicio nuevo…</option>';
 }
 function cliOpts(sel=''){return '<option value="">— Sin cliente —</option>'+DB.clientes.map(c=>`<option ${c.nombre===sel?'selected':''}>${c.nombre}</option>`).join('');}
+function dlClientes(){return '<datalist id="dl-clientes">'+DB.clientes.map(c=>`<option value="${c.nombre}">`).join('')+'</datalist>';}
+function dlCategorias(){const cats=[...new Set(DB.productos.map(p=>(p.categoria||'').trim()).filter(Boolean))];return '<datalist id="dl-categorias">'+cats.map(c=>`<option value="${c}">`).join('')+'</datalist>';}
+
+// Producto nuevo desde venta/presupuesto
+function onProdSelect(sel){
+  const row=document.getElementById('row-prod-nuevo');
+  if(sel.value==='__nuevo__'){if(row)row.style.display='';}
+  else{
+    if(row)row.style.display='none';
+    const p=DB.productos.find(x=>x.nombre===sel.value);
+    const m=document.getElementById('f-monto');
+    if(p&&p.precio&&m){m.value=p.precio;}
+    calcVentaFinal();
+  }
+}
+function resolverProducto(){
+  const sel=document.getElementById('f-producto');if(!sel)return '';
+  if(sel.value!=='__nuevo__')return sel.value;
+  const inp=document.getElementById('f-prod-nuevo');
+  const nombre=(inp?inp.value:'').trim();
+  if(!nombre)return null;
+  const chk=document.getElementById('f-prod-guardar');
+  if(chk&&chk.checked&&!DB.productos.some(p=>(p.nombre||'').toLowerCase()===nombre.toLowerCase())){
+    const monto=parseNum((document.getElementById('f-monto')||{value:0}).value);
+    DB.productos.unshift({id:generarId(),nombre,tipo:'Servicio',precio:monto||'',categoria:'',codigo:'',costo:'',descripcion:''});
+  }
+  return nombre;
+}
+
+// Descuento en venta/presupuesto
+function calcVentaFinal(){
+  const mEl=document.getElementById('f-monto'),dEl=document.getElementById('f-desc'),fin=document.getElementById('f-final');
+  if(!mEl||!fin)return;
+  const m=parseNum(mEl.value),d=Math.min(Math.max(parseNum(dEl?dEl.value:0),0),100);
+  const tot=Math.round(m*(1-d/100)*100)/100;
+  fin.value=money(tot)+(d>0?' — con '+d+'% de descuento':'');
+}
+
+// Margen en productos
+function calcMargen(){
+  const c=parseNum((document.getElementById('f-costo')||{value:0}).value),p=parseNum((document.getElementById('f-precio')||{value:0}).value);
+  const info=document.getElementById('margen-info');if(!info)return;
+  if(c>0&&p>0){const mg=Math.round((p-c)/c*10000)/100;info.textContent='Margen actual: '+mg+'% — Ganancia por unidad: '+money(p-c);info.style.color=p>=c?'var(--accent)':'var(--danger)';}
+  else info.textContent='Cargá costo y precio para ver el margen, o usá "Margen %" para calcular el precio.';
+}
+function aplicarMargen(){
+  const c=parseNum((document.getElementById('f-costo')||{value:0}).value),m=parseNum((document.getElementById('f-margen')||{value:0}).value);
+  const pEl=document.getElementById('f-precio');
+  if(c>0&&pEl){pEl.value=Math.round(c*(1+m/100)*100)/100;calcMargen();}
+}
+
+// Ventas recurrentes
+function addPeriod(fecha,per){
+  if(!fecha)return null;
+  const d=new Date(fecha+'T00:00:00');if(isNaN(d))return null;
+  if(per==='Semanal')d.setDate(d.getDate()+7);
+  else if(per==='Quincenal')d.setDate(d.getDate()+14);
+  else if(per==='Mensual')d.setMonth(d.getMonth()+1);
+  else if(per==='Anual')d.setFullYear(d.getFullYear()+1);
+  else return null;
+  return d.toISOString().slice(0,10);
+}
+function procesarRecurrentes(){
+  const hoy=today();let changed=false;
+  DB.ventas.slice().forEach(v=>{
+    if(!v.recurrencia||v.recurrencia==='Única'||v.estado!=='Realizada')return;
+    if(!v.proxima){v.proxima=addPeriod(v.fechaCobro||v.fecha,v.recurrencia);changed=true;}
+    let guard=0;
+    while(v.proxima&&v.proxima<=hoy&&guard<36){
+      const nv={id:generarId(),cliente:v.cliente,producto:v.producto,descripcion:v.producto,monto:v.monto,montoLista:v.montoLista||v.monto,descuento:v.descuento||0,estado:'Realizada',fecha:v.proxima,fechaCobro:v.proxima,recurrencia:'Única',origenRecur:v.id};
+      DB.ventas.unshift(nv);
+      DB.cobranzas.unshift({id:generarId(),ventaId:nv.id,cliente:nv.cliente,concepto:(nv.producto||'Venta')+' ('+v.recurrencia.toLowerCase()+')',total:nv.monto,cobrado:0,vencimiento:nv.fecha,estado:'Pendiente'});
+      syncCC(nv.cliente,'Venta: '+(nv.producto||'sin descripción'),nv.monto,'Cargo',nv.fecha,'venta_'+nv.id);
+      v.proxima=addPeriod(v.proxima,v.recurrencia);
+      changed=true;guard++;
+    }
+  });
+  if(changed)saveLocal();
+}
 
 // CC (CUENTA CORRIENTE)
 function getSaldoCC(clienteNombre){
@@ -661,21 +744,22 @@ function renderDashboard(){
 function renderClientes(){
   const q=(document.getElementById('cli-search').value||'').toLowerCase();
   const rows=DB.clientes.filter(c=>!q||(c.nombre+c.email+c.tel).toLowerCase().includes(q));
-  document.getElementById('cli-tbody').innerHTML=rows.length?rows.map((c,i)=>{
+  document.getElementById('cli-tbody').innerHTML=rows.length?rows.map(c=>{
+    const i=DB.clientes.indexOf(c);
     const saldo=getSaldoCC(c.nombre);
     const saldoStr=`<span style="font-family:'DM Mono',monospace;font-size:12px;color:${saldo>=0?'var(--accent)':'var(--danger)'}">${money(saldo)}</span>`;
-    const wa=waLink(c.tel,'Hola '+c.nombre+', te escribo desde Magenta.');
-    const telStr=c.tel?`${c.tel} ${wa?`<a href="${wa}" target="_blank" title="Abrir WhatsApp" style="text-decoration:none;color:var(--accent)"><svg class="ic" style="margin-right:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>`:''}`:'—';
-    return `<tr><td><strong>${c.nombre}</strong></td><td>${telStr}</td><td>${c.email||'—'}</td><td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notas||'—'}</td><td>${saldoStr}</td><td style="display:flex;gap:4px"><button class="action-btn" onclick="editModal('cli',${i})">Ver</button><button class="action-btn" onclick="openCC('${c.nombre.replace(/'/g,"\'")}')">CC</button></td></tr>`;
+    const wa=waLink(c.tel,'Hola '+c.nombre+', ¿cómo estás? Te escribo de parte de nuestro negocio.');
+    const waBtn=wa?`<a href="${wa}" target="_blank" class="action-btn" style="text-decoration:none;color:var(--accent);display:inline-flex;align-items:center" title="Abrir chat de WhatsApp"><svg class="ic" style="margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>WhatsApp</a>`:'';
+    return `<tr><td><strong>${c.nombre}</strong></td><td>${c.tel||'—'}</td><td>${c.email||'—'}</td><td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.notas||'—'}</td><td>${saldoStr}</td><td style="display:flex;gap:4px;flex-wrap:wrap"><button class="action-btn" onclick="editModal('cli',${i})">Ver</button><button class="action-btn" onclick="openCC('${c.nombre.replace(/'/g,"\'")}')">CC</button>${waBtn}</td></tr>`;
   }).join(''):`<tr><td colspan="6" class="empty-state">Sin clientes registrados</td></tr>`;
 }
 function renderVentas(){
   const q=(document.getElementById('ven-search').value||'').toLowerCase(),f=document.getElementById('ven-filter').value;
   const rows=DB.ventas.filter(v=>(!q||(v.cliente+v.descripcion+v.producto).toLowerCase().includes(q))&&(!f||v.estado===f));
-  document.getElementById('ven-tbody').innerHTML=rows.length?rows.map((v,i)=>`<tr>
+  document.getElementById('ven-tbody').innerHTML=rows.length?rows.map(v=>{const i=DB.ventas.indexOf(v);return `<tr>
     <td>${v.cliente||'—'}</td>
-    <td>${v.producto||v.descripcion||'—'}</td>
-    <td style="font-family:'DM Mono',monospace">${money(v.monto)}</td>
+    <td>${v.producto||v.descripcion||'—'}${v.recurrencia&&v.recurrencia!=='Única'?` <span class="badge b-blue" title="Se repite: cada período se genera sola la venta y su cobranza">&#8635; ${v.recurrencia}</span>`:''}</td>
+    <td style="font-family:'DM Mono',monospace"${v.descuento>0?` title="Precio de lista ${money(v.montoLista)} con ${v.descuento}% de descuento"`:''}>${money(v.monto)}${v.descuento>0?` <span style="font-size:10px;color:var(--warn)">-${v.descuento}%</span>`:''}</td>
     <td>${badge(v.estado)}</td>
     <td>${fmt(v.fecha)}</td>
     <td style="display:flex;gap:4px;flex-wrap:wrap">
@@ -683,12 +767,18 @@ function renderVentas(){
       <button class="action-btn" style="color:var(--info);border-color:var(--info-light)" onclick="irARCA(${i})" title="Facturar en ARCA">ARCA</button>
       <button class="action-btn" style="color:var(--accent);border-color:var(--accent-light)" onclick="generarPDF('ven',${i})" title="Descargar comprobante PDF">PDF</button>
     </td>
-  </tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin ventas</td></tr>`;
+  </tr>`;}).join(''):`<tr><td colspan="6" class="empty-state">Sin ventas</td></tr>`;
 }
 function renderLeads(){
   const q=(document.getElementById('lead-search').value||'').toLowerCase(),f=document.getElementById('lead-filter').value;
   const rows=DB.leads.filter(l=>(!q||(l.contacto+l.interes).toLowerCase().includes(q))&&(!f||l.estado===f));
-  document.getElementById('lead-tbody').innerHTML=rows.length?rows.map((l,i)=>`<tr><td><strong>${l.contacto}</strong></td><td>${l.interes||'—'}</td><td>${l.canal||'—'}</td><td>${badge(l.estado)}</td><td>${fmt(l.fecha)}</td><td><button class="action-btn" onclick="editModal('lead',${i})">Ver</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin consultas</td></tr>`;
+  document.getElementById('lead-tbody').innerHTML=rows.length?rows.map(l=>{
+    const i=DB.leads.indexOf(l);
+    const tel=l.tel||telDeCliente(l.contacto);
+    const wa=waLink(tel,'Hola '+l.contacto+', ¿cómo estás? Te escribo por tu consulta sobre '+(l.interes||'nuestros servicios')+'.');
+    const waBtn=wa?`<a href="${wa}" target="_blank" class="action-btn" style="text-decoration:none;color:var(--accent);display:inline-flex;align-items:center" title="Responder por WhatsApp"><svg class="ic" style="margin-right:4px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>WhatsApp</a>`:'';
+    return `<tr><td><strong>${l.contacto}</strong></td><td>${l.interes||'—'}</td><td>${l.canal||'—'}</td><td>${badge(l.estado)}</td><td>${fmt(l.fecha)}</td><td style="display:flex;gap:4px;flex-wrap:wrap"><button class="action-btn" onclick="editModal('lead',${i})">Ver</button>${waBtn}</td></tr>`;
+  }).join(''):`<tr><td colspan="6" class="empty-state">Sin consultas</td></tr>`;
 }
 // ——— COBRANZAS: helpers del "loop de cobro" ———
 function cobById(id){return DB.cobranzas.find(c=>c.id===id);}
@@ -808,27 +898,39 @@ function renderCobranzas(){
 function renderPresupuestos(){
   const q=(document.getElementById('pre-search').value||'').toLowerCase(),f=document.getElementById('pre-filter').value;
   const rows=DB.presupuestos.filter(o=>(!q||(o.cliente+o.descripcion+o.producto).toLowerCase().includes(q))&&(!f||o.estado===f));
-  document.getElementById('pre-tbody').innerHTML=rows.length?rows.map((o,i)=>`<tr>
+  document.getElementById('pre-tbody').innerHTML=rows.length?rows.map(o=>{const i=DB.presupuestos.indexOf(o);return `<tr>
     <td>${o.cliente||'—'}</td>
     <td>${o.producto||o.descripcion||'—'}</td>
-    <td style="font-family:'DM Mono',monospace">${money(o.monto)}</td>
+    <td style="font-family:'DM Mono',monospace"${o.descuento>0?` title="Precio de lista ${money(o.montoLista)} con ${o.descuento}% de descuento"`:''}>${money(o.monto)}${o.descuento>0?` <span style="font-size:10px;color:var(--warn)">-${o.descuento}%</span>`:''}</td>
     <td>${badge(o.estado)}</td>
     <td>${fmt(o.fecha)}</td>
     <td style="display:flex;gap:4px">
       <button class="action-btn" onclick="editModal('pre',${i})">Ver</button>
       <button class="action-btn" style="color:var(--accent);border-color:var(--accent-light)" onclick="generarPDF('pre',${i})" title="Descargar PDF">PDF</button>
     </td>
-  </tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin presupuestos</td></tr>`;
+  </tr>`;}).join(''):`<tr><td colspan="6" class="empty-state">Sin presupuestos</td></tr>`;
 }
 function renderGastos(){
   const q=(document.getElementById('gas-search').value||'').toLowerCase(),f=document.getElementById('gas-filter').value;
   const rows=DB.gastos.filter(g=>(!q||g.concepto.toLowerCase().includes(q))&&(!f||g.estado===f));
-  document.getElementById('gas-tbody').innerHTML=rows.length?rows.map((g,i)=>`<tr><td>${fmt(g.fecha)}</td><td><strong>${g.concepto}</strong></td><td><span class="badge b-gray">${g.categoria||'Varios'}</span></td><td style="font-family:'DM Mono',monospace">${money(g.monto)}</td><td>${badge(g.estado)}</td><td><button class="action-btn" onclick="editModal('gas',${i})">Ver</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Sin gastos</td></tr>`;
+  document.getElementById('gas-tbody').innerHTML=rows.length?rows.map(g=>{const i=DB.gastos.indexOf(g);return `<tr><td>${fmt(g.fecha)}</td><td><strong>${g.concepto}</strong></td><td><span class="badge b-gray">${g.categoria||'Varios'}</span></td><td style="font-family:'DM Mono',monospace">${money(g.monto)}</td><td>${badge(g.estado)}</td><td><button class="action-btn" onclick="editModal('gas',${i})">Ver</button></td></tr>`;}).join(''):`<tr><td colspan="6" class="empty-state">Sin gastos</td></tr>`;
 }
 function renderProductos(){
   const q=(document.getElementById('prod-search').value||'').toLowerCase(),f=document.getElementById('prod-filter').value;
-  const rows=DB.productos.filter(p=>(!q||(p.nombre+p.descripcion).toLowerCase().includes(q))&&(!f||p.tipo===f));
-  document.getElementById('prod-tbody').innerHTML=rows.length?rows.map((p,i)=>`<tr><td><strong>${p.nombre}</strong></td><td><span class="badge b-gray">${p.tipo||'Producto'}</span></td><td style="font-family:'DM Mono',monospace">${p.precio?money(p.precio):'—'}</td><td style="color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.descripcion||'—'}</td><td><button class="action-btn" onclick="editModal('prod',${i})">Ver</button></td></tr>`).join(''):`<tr><td colspan="5" class="empty-state">Sin productos cargados</td></tr>`;
+  const catSel=document.getElementById('prod-cat');
+  const catActual=catSel?catSel.value:'';
+  if(catSel){
+    const cats=[...new Set(DB.productos.map(p=>(p.categoria||'').trim()).filter(Boolean))].sort();
+    catSel.innerHTML='<option value="">Todas las categorías</option>'+cats.map(c=>`<option ${c===catActual?'selected':''}>${c}</option>`).join('');
+  }
+  const rows=DB.productos.filter(p=>(!q||((p.nombre||'')+(p.descripcion||'')+(p.codigo||'')).toLowerCase().includes(q))&&(!f||p.tipo===f)&&(!catActual||(p.categoria||'').trim()===catActual));
+  document.getElementById('prod-tbody').innerHTML=rows.length?rows.map(p=>{
+    const i=DB.productos.indexOf(p);
+    const costo=parseNum(p.costo),precio=parseNum(p.precio);
+    const margen=(costo>0&&precio>0)?Math.round((precio-costo)/costo*10000)/100:null;
+    const margenStr=margen===null?'—':`<span style="color:${margen>=0?'var(--accent)':'var(--danger)'};font-family:'DM Mono',monospace;font-size:12px">${margen}%</span>`;
+    return `<tr><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${p.codigo||'—'}</td><td><strong>${p.nombre}</strong></td><td>${p.categoria?`<span class="badge b-blue">${p.categoria}</span>`:'—'}</td><td><span class="badge b-gray">${p.tipo||'Producto'}</span></td><td style="font-family:'DM Mono',monospace">${costo?money(costo):'—'}</td><td style="font-family:'DM Mono',monospace">${precio?money(precio):'—'}</td><td>${margenStr}</td><td><button class="action-btn" onclick="editModal('prod',${i})">Ver</button></td></tr>`;
+  }).join(''):`<tr><td colspan="8" class="empty-state">Sin productos cargados</td></tr>`;
 }
 
 // CHARTS
@@ -1031,7 +1133,7 @@ function actualizarVencidos(){
   });
   if(changed)saveLocal();
 }
-function renderAll(){actualizarVencidos();renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();renderProductos();renderMetricas();}
+function renderAll(){procesarRecurrentes();actualizarVencidos();renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();renderProductos();renderMetricas();}
 
 // MODAL FORMS
 const FORMS={
@@ -1042,12 +1144,21 @@ const FORMS={
     <div class="form-row"><label>Notas</label><textarea id="f-notas">${d.notas||''}</textarea></div>`,
   ven:(d={})=>`<h3>${d.cliente?'Editar venta':'Nueva venta'}</h3>
     <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
-    <div class="form-row"><label>Producto / Servicio</label><select id="f-producto" onchange="if(this.value){const p=DB.productos.find(x=>x.nombre===this.value);if(p&&p.precio)document.getElementById('f-monto').value=p.precio;}">${prodOpts(d.producto||d.descripcion)}</select></div>
-    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}" step="0.01"></div>
+    <div class="form-row"><label>Producto / Servicio</label><select id="f-producto" onchange="onProdSelect(this)">${prodOpts(d.producto||d.descripcion)}</select></div>
+    <div class="form-row" id="row-prod-nuevo" style="display:none">
+      <label>Nombre del nuevo producto/servicio *</label><input id="f-prod-nuevo" placeholder="Ej: Mantenimiento web mensual">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:6px;cursor:pointer"><input type="checkbox" id="f-prod-guardar" checked style="width:auto"> Guardarlo en el catálogo de productos</label>
+    </div>
+    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.montoLista||d.monto||''}" step="0.01" oninput="calcVentaFinal()"></div>
+    <div class="form-row"><label>Descuento % (opcional)</label><input type="number" id="f-desc" value="${d.descuento||''}" step="0.01" min="0" max="100" placeholder="0" oninput="calcVentaFinal()"></div>
+    <div class="form-row"><label>Total final</label><input id="f-final" disabled style="background:var(--bg);font-family:'DM Mono',monospace"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Consulta'?'selected':''}>Consulta</option><option ${d.estado==='Realizada'?'selected':''}>Realizada</option></select></div>
-    <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
+    <div class="form-row"><label>Fecha de la venta</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>
+    <div class="form-row"><label>Fecha pactada de cobro</label><input type="date" id="f-fcobro" value="${d.fechaCobro||d.fecha||today()}"></div>
+    <div class="form-row"><label>¿Se repite?</label><select id="f-recur"><option ${(!d.recurrencia||d.recurrencia==='Única')?'selected':''}>Única</option><option ${d.recurrencia==='Semanal'?'selected':''}>Semanal</option><option ${d.recurrencia==='Quincenal'?'selected':''}>Quincenal</option><option ${d.recurrencia==='Mensual'?'selected':''}>Mensual</option><option ${d.recurrencia==='Anual'?'selected':''}>Anual</option></select><span style="font-size:11px;color:var(--muted);display:block;margin-top:3px">Si se repite, cada período se genera sola la venta y su cobranza.</span></div>`,
   lead:(d={})=>`<h3>${d.contacto?'Editar consulta':'Nueva consulta'}</h3>
-    <div class="form-row"><label>Contacto *</label><input id="f-contacto" value="${d.contacto||''}"></div>
+    <div class="form-row"><label>Contacto *</label><input id="f-contacto" value="${d.contacto||''}" list="dl-clientes" placeholder="Escribí un nombre nuevo o elegí un cliente guardado" autocomplete="off">${dlClientes()}</div>
+    <div class="form-row"><label>Teléfono (WhatsApp)</label><input id="f-tel" value="${d.tel||''}" placeholder="Se completa solo si elegís un cliente con teléfono"></div>
     <div class="form-row"><label>Interés</label><input id="f-interes" value="${d.interes||''}"></div>
     <div class="form-row"><label>Canal</label><input id="f-canal" value="${d.canal||''}" placeholder="WhatsApp, Instagram..."></div>
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Nuevo'?'selected':''}>Nuevo</option><option ${d.estado==='En seguimiento'?'selected':''}>En seguimiento</option><option ${d.estado==='Convertido'?'selected':''}>Convertido</option><option ${d.estado==='Perdido'?'selected':''}>Perdido</option></select></div>
@@ -1061,20 +1172,29 @@ const FORMS={
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option><option ${d.estado==='Cobro Parcial'?'selected':''}>Cobro Parcial</option><option ${d.estado==='Cobrado'?'selected':''}>Cobrado</option><option ${d.estado==='Vencido'?'selected':''}>Vencido</option></select></div>`,
   pre:(d={})=>`<h3>${d.cliente?'Editar presupuesto':'Nuevo presupuesto'}</h3>
     <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
-    <div class="form-row"><label>Producto / Servicio</label><select id="f-producto" onchange="if(this.value){const p=DB.productos.find(x=>x.nombre===this.value);if(p&&p.precio)document.getElementById('f-monto').value=p.precio;}">${prodOpts(d.producto||d.descripcion)}</select></div>
-    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.monto||''}" step="0.01"></div>
+    <div class="form-row"><label>Producto / Servicio</label><select id="f-producto" onchange="onProdSelect(this)">${prodOpts(d.producto||d.descripcion)}</select></div>
+    <div class="form-row" id="row-prod-nuevo" style="display:none">
+      <label>Nombre del nuevo producto/servicio *</label><input id="f-prod-nuevo" placeholder="Ej: Rediseño de marca">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:6px;cursor:pointer"><input type="checkbox" id="f-prod-guardar" checked style="width:auto"> Guardarlo en el catálogo de productos</label>
+    </div>
+    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.montoLista||d.monto||''}" step="0.01" oninput="calcVentaFinal()"></div>
+    <div class="form-row"><label>Descuento % (opcional)</label><input type="number" id="f-desc" value="${d.descuento||''}" step="0.01" min="0" max="100" placeholder="0" oninput="calcVentaFinal()"></div>
+    <div class="form-row"><label>Total final</label><input id="f-final" disabled style="background:var(--bg);font-family:'DM Mono',monospace"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Borrador'?'selected':''}>Borrador</option><option ${d.estado==='Enviada'?'selected':''}>Enviada</option><option ${d.estado==='Aceptada'?'selected':''}>Aceptada</option><option ${d.estado==='Rechazada'?'selected':''}>Rechazada</option></select></div>
     <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
   gas:(d={})=>`<h3>${d.concepto?'Editar gasto':'Nuevo gasto'}</h3>
     <div class="form-row"><label>Concepto *</label><input id="f-concepto" value="${d.concepto||''}" placeholder="Publicidad, Alquiler..."></div>
-    <div class="form-row"><label>Categoría</label><select id="f-categoria"><option ${d.categoria==='Fijos'?'selected':''}>Fijos</option><option ${d.categoria==='Proveedores'?'selected':''}>Proveedores</option><option ${d.categoria==='Impuestos'?'selected':''}>Impuestos</option><option ${d.categoria==='Honorarios'?'selected':''}>Honorarios</option><option ${d.categoria==='Varios'?'selected':''}>Varios</option></select></div>
+    <div class="form-row"><label>Categoría</label><select id="f-categoria"><option ${d.categoria==='Fijos'?'selected':''}>Fijos</option><option ${d.categoria==='Proveedores'?'selected':''}>Proveedores</option><option ${d.categoria==='Costo de productos'?'selected':''}>Costo de productos</option><option ${d.categoria==='Impuestos'?'selected':''}>Impuestos</option><option ${d.categoria==='Honorarios'?'selected':''}>Honorarios</option><option ${d.categoria==='Varios'?'selected':''}>Varios</option></select></div>
     <div class="form-row"><label>Monto *</label><input type="number" id="f-monto" value="${d.monto||''}" step="0.01"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Pagado'?'selected':''}>Pagado</option><option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option></select></div>
     <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
   prod:(d={})=>`<h3>${d.nombre?'Editar producto':'Nuevo producto / servicio'}</h3>
     <div class="form-row"><label>Nombre *</label><input id="f-nombre" value="${d.nombre||''}" placeholder="Ej: Diseño de logo, Consultoría..."></div>
-    <div class="form-row"><label>Tipo</label><select id="f-tipo"><option ${d.tipo==='Producto'?'selected':''}>Producto</option><option ${d.tipo==='Servicio'?'selected':''}>Servicio</option></select></div>
-    <div class="form-row"><label>Precio base</label><input type="number" id="f-precio" value="${d.precio||''}" step="0.01" placeholder="0"></div>
+    <div class="form-row" style="display:flex;gap:8px"><div style="flex:1"><label>Código (opcional)</label><input id="f-codigo" value="${d.codigo||''}" placeholder="Ej: SRV-001"></div><div style="flex:1"><label>Tipo</label><select id="f-tipo"><option ${d.tipo==='Producto'?'selected':''}>Producto</option><option ${d.tipo==='Servicio'?'selected':''}>Servicio</option></select></div></div>
+    <div class="form-row"><label>Categoría</label><input id="f-categoria" value="${d.categoria||''}" list="dl-categorias" placeholder="Ej: Diseño, Mantenimiento, Mercadería..." autocomplete="off">${dlCategorias()}</div>
+    <div class="form-row" style="display:flex;gap:8px"><div style="flex:1"><label>Costo</label><input type="number" id="f-costo" value="${d.costo||''}" step="0.01" placeholder="0" oninput="calcMargen()"></div><div style="flex:1"><label>Margen % deseado</label><input type="number" id="f-margen" step="0.01" placeholder="Ej: 40" oninput="aplicarMargen()"></div></div>
+    <div class="form-row"><label>Precio de venta</label><input type="number" id="f-precio" value="${d.precio||''}" step="0.01" placeholder="0" oninput="calcMargen()"></div>
+    <div class="form-row" id="margen-info" style="font-size:12px;color:var(--muted)"></div>
     <div class="form-row"><label>Descripción</label><textarea id="f-descripcion">${d.descripcion||''}</textarea></div>`
 };
 
@@ -1087,12 +1207,18 @@ function openModal(t){
   modalState={t,i:null};
   mContent.innerHTML=FORMS[t]()+`<div class="modal-footer"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveForm()">Guardar</button></div>`;
   overlay.classList.add('open');
+  afterFormRender(t);
 }
 function editModal(t,i){
   modalState={t,i};
   const list=getList(t);
   mContent.innerHTML=FORMS[t](list[i])+`<div class="modal-footer"><button class="btn btn-danger" style="margin-right:auto" onclick="delItem()">Eliminar</button><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveForm()">Guardar</button></div>`;
   overlay.classList.add('open');
+  afterFormRender(t);
+}
+function afterFormRender(t){
+  if(t==='ven'||t==='pre')calcVentaFinal();
+  if(t==='prod')calcMargen();
 }
 function getList(t){return t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:t==='gas'?DB.gastos:DB.productos;}
 function delItem(){if(!confirm('¿Eliminar?'))return;const{t,i}=modalState;getList(t).splice(i,1);save();renderAll();closeModal();}
@@ -1105,24 +1231,35 @@ function saveForm(){
     if(!obj.nombre)return alert('Nombre requerido');
   }else if(t==='ven'){
     obj.cliente=document.getElementById('f-cliente').value;
-    obj.producto=document.getElementById('f-producto').value;
-    obj.descripcion=obj.producto;
-    obj.monto=document.getElementById('f-monto').value;obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.cliente)return alert('Cliente requerido');
+    const prodV=resolverProducto();
+    if(prodV===null)return alert('Escribí el nombre del nuevo producto/servicio');
+    obj.producto=prodV;
+    obj.descripcion=obj.producto;
+    obj.montoLista=parseNum(document.getElementById('f-monto').value);
+    obj.descuento=Math.min(Math.max(parseNum(document.getElementById('f-desc').value),0),100);
+    obj.monto=Math.round(obj.montoLista*(1-obj.descuento/100)*100)/100;
+    obj.estado=document.getElementById('f-estado').value;
+    obj.fecha=document.getElementById('f-fecha').value;
+    obj.fechaCobro=document.getElementById('f-fcobro').value||obj.fecha;
+    const recurAnt=obj.recurrencia;
+    obj.recurrencia=document.getElementById('f-recur').value;
+    if(obj.recurrencia!==recurAnt)obj.proxima=null;
     if(obj.estado==='Realizada'){
       const ci=DB.cobranzas.findIndex(c=>c.ventaId===obj.id);
       if(ci===-1){
-        DB.cobranzas.unshift({id:generarId(),ventaId:obj.id,cliente:obj.cliente,concepto:obj.producto||'Venta',total:obj.monto,cobrado:0,vencimiento:obj.fecha,estado:'Pendiente'});
-        alert('Venta realizada. Cobranza generada automáticamente.');
+        DB.cobranzas.unshift({id:generarId(),ventaId:obj.id,cliente:obj.cliente,concepto:obj.producto||'Venta',total:obj.monto,cobrado:0,vencimiento:obj.fechaCobro,estado:'Pendiente'});
+        alert('Venta realizada. Cobranza generada automáticamente con vencimiento '+fmt(obj.fechaCobro)+'.');
       }else{
-        DB.cobranzas[ci].cliente=obj.cliente;DB.cobranzas[ci].concepto=obj.producto||'Venta';DB.cobranzas[ci].total=obj.monto;
+        DB.cobranzas[ci].cliente=obj.cliente;DB.cobranzas[ci].concepto=obj.producto||'Venta';DB.cobranzas[ci].total=obj.monto;DB.cobranzas[ci].vencimiento=obj.fechaCobro;
       }
       // Sync CC: cargo por la venta
       syncCC(obj.cliente,'Venta: '+(obj.producto||'sin descripción'),obj.monto,'Cargo',obj.fecha,'venta_'+obj.id);
     }
   }else if(t==='lead'){
-    obj.contacto=document.getElementById('f-contacto').value;obj.interes=document.getElementById('f-interes').value;obj.canal=document.getElementById('f-canal').value;obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
+    obj.contacto=document.getElementById('f-contacto').value;obj.tel=document.getElementById('f-tel').value;obj.interes=document.getElementById('f-interes').value;obj.canal=document.getElementById('f-canal').value;obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.contacto)return alert('Contacto requerido');
+    if(!obj.tel){const cc=DB.clientes.find(x=>x.nombre===obj.contacto);if(cc&&cc.tel)obj.tel=cc.tel;}
   }else if(t==='cob'){
     obj.cliente=document.getElementById('f-cliente').value;obj.concepto=document.getElementById('f-concepto').value;obj.total=document.getElementById('f-total').value;obj.cobrado=document.getElementById('f-cobrado').value;obj.vencimiento=document.getElementById('f-venc').value;obj.estado=document.getElementById('f-estado').value;
     if(!obj.cliente)return alert('Cliente requerido');
@@ -1133,10 +1270,15 @@ function saveForm(){
     }
   }else if(t==='pre'){
     obj.cliente=document.getElementById('f-cliente').value;
-    obj.producto=document.getElementById('f-producto').value;
-    obj.descripcion=obj.producto;
-    obj.monto=document.getElementById('f-monto').value;obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.cliente)return alert('Cliente requerido');
+    const prodP=resolverProducto();
+    if(prodP===null)return alert('Escribí el nombre del nuevo producto/servicio');
+    obj.producto=prodP;
+    obj.descripcion=obj.producto;
+    obj.montoLista=parseNum(document.getElementById('f-monto').value);
+    obj.descuento=Math.min(Math.max(parseNum(document.getElementById('f-desc').value),0),100);
+    obj.monto=Math.round(obj.montoLista*(1-obj.descuento/100)*100)/100;
+    obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
     if(obj.estado==='Aceptada'){
       const ci=DB.cobranzas.findIndex(c=>c.presupuestoId===obj.id);
       if(ci===-1){DB.cobranzas.unshift({id:generarId(),presupuestoId:obj.id,cliente:obj.cliente,concepto:obj.producto||'Presupuesto',total:obj.monto,cobrado:0,vencimiento:obj.fecha,estado:'Pendiente'});alert('Presupuesto aceptado. Cobranza generada automáticamente.');}
@@ -1146,7 +1288,7 @@ function saveForm(){
     obj.concepto=document.getElementById('f-concepto').value;obj.categoria=document.getElementById('f-categoria').value;obj.monto=document.getElementById('f-monto').value;obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
     if(!obj.concepto)return alert('Concepto requerido');if(!obj.monto)return alert('Monto requerido');
   }else if(t==='prod'){
-    obj.nombre=document.getElementById('f-nombre').value;obj.tipo=document.getElementById('f-tipo').value;obj.precio=document.getElementById('f-precio').value;obj.descripcion=document.getElementById('f-descripcion').value;
+    obj.nombre=document.getElementById('f-nombre').value;obj.codigo=document.getElementById('f-codigo').value;obj.categoria=(document.getElementById('f-categoria').value||'').trim();obj.tipo=document.getElementById('f-tipo').value;obj.costo=document.getElementById('f-costo').value;obj.precio=document.getElementById('f-precio').value;obj.descripcion=document.getElementById('f-descripcion').value;
     if(!obj.nombre)return alert('Nombre requerido');
   }
   if(i!==null)list[i]=obj;else list.unshift(obj);
@@ -1156,12 +1298,12 @@ function saveForm(){
 // EXCEL
 const SHEET_MAP={
   clientes:{name:'Clientes',cols:['nombre','tel','email','notas']},
-  ventas:{name:'Ventas',cols:['cliente','producto','monto','estado','fecha']},
-  leads:{name:'Consultas',cols:['contacto','interes','canal','estado','fecha']},
+  ventas:{name:'Ventas',cols:['cliente','producto','monto','descuento','estado','fecha','fechaCobro','recurrencia']},
+  leads:{name:'Consultas',cols:['contacto','tel','interes','canal','estado','fecha']},
   cobranzas:{name:'Cobranzas',cols:['cliente','concepto','total','cobrado','vencimiento','estado']},
   presupuestos:{name:'Presupuestos',cols:['cliente','producto','monto','estado','fecha']},
   gastos:{name:'Gastos',cols:['fecha','concepto','categoria','monto','estado']},
-  productos:{name:'Productos',cols:['nombre','tipo','precio','descripcion']}
+  productos:{name:'Productos',cols:['codigo','nombre','categoria','tipo','costo','precio','descripcion']}
 };
 function exportarExcel(){const wb=XLSX.utils.book_new();Object.entries(SHEET_MAP).forEach(([sec,m])=>{if(!DB[sec]||!DB[sec].length)return;XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(DB[sec],{header:m.cols}),m.name);});XLSX.writeFile(wb,'CRM-Completo.xlsx');}
 function exportarHoja(sec){const m=SHEET_MAP[sec];if(!DB[sec]||!DB[sec].length)return alert('Sin datos');const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(DB[sec],{header:m.cols}),m.name);XLSX.writeFile(wb,'CRM-'+m.name+'.xlsx');}
@@ -1178,15 +1320,15 @@ function cargarDatosEjemplo(){
     {id:generarId(),nombre:'Kiosco Don Pepe',tel:'',email:'',notas:'Compra mensual'}
   );
   DB.productos.push(
-    {id:generarId(),nombre:'Servicio de mantenimiento',tipo:'Servicio',precio:15000,descripcion:'Visita mensual'},
-    {id:generarId(),nombre:'Producto X',tipo:'Producto',precio:8000,descripcion:''}
+    {id:generarId(),nombre:'Servicio de mantenimiento',codigo:'SRV-001',categoria:'Servicios',tipo:'Servicio',costo:9000,precio:15000,descripcion:'Visita mensual'},
+    {id:generarId(),nombre:'Producto X',codigo:'PRD-001',categoria:'Mercadería',tipo:'Producto',costo:5000,precio:8000,descripcion:''}
   );
   DB.ventas.push(
-    {id:generarId(),cliente:'Juan Pérez',producto:'Servicio de mantenimiento',descripcion:'Servicio de mantenimiento',monto:15000,estado:'Realizada',fecha:f}
+    {id:generarId(),cliente:'Juan Pérez',producto:'Servicio de mantenimiento',descripcion:'Servicio de mantenimiento',monto:15000,montoLista:15000,descuento:0,estado:'Realizada',fecha:f,fechaCobro:dSum(3),recurrencia:'Mensual'}
   );
   DB.leads.push(
-    {id:generarId(),contacto:'Carlos Ruiz',interes:'Producto X',canal:'WhatsApp',estado:'Nuevo',fecha:f},
-    {id:generarId(),contacto:'Ana López',interes:'Servicio de mantenimiento',canal:'Instagram',estado:'En seguimiento',fecha:f}
+    {id:generarId(),contacto:'Carlos Ruiz',tel:'3442556677',interes:'Producto X',canal:'WhatsApp',estado:'Nuevo',fecha:f},
+    {id:generarId(),contacto:'Ana López',tel:'',interes:'Servicio de mantenimiento',canal:'Instagram',estado:'En seguimiento',fecha:f}
   );
   DB.cobranzas.push(
     {id:generarId(),cliente:'María Gómez',concepto:'Producto X',total:8000,cobrado:3000,vencimiento:dSum(-5),estado:'Cobro Parcial'},
