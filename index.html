@@ -538,7 +538,34 @@ function prodOpts(sel=''){
     DB.productos.map(p=>`<option value="${p.nombre}" ${p.nombre===sel?'selected':''}>${p.nombre} ${p.precio?'('+money(p.precio)+')':''}</option>`).join('')+
     '<option value="__nuevo__">+ Crear producto/servicio nuevo…</option>';
 }
-function cliOpts(sel=''){return '<option value="">— Sin cliente —</option>'+DB.clientes.map(c=>`<option ${c.nombre===sel?'selected':''}>${c.nombre}</option>`).join('');}
+function cliOpts(sel=''){
+  const existe=!sel||DB.clientes.some(c=>c.nombre===sel);
+  return '<option value="">— Sin cliente —</option>'+
+    (existe?'':`<option value="${sel}" selected>${sel}</option>`)+
+    DB.clientes.map(c=>`<option ${c.nombre===sel?'selected':''}>${c.nombre}</option>`).join('')+
+    '<option value="__nuevo__">+ Crear cliente nuevo…</option>';
+}
+function rowCliNuevo(){return `<div class="form-row" id="row-cli-nuevo" style="display:none">
+    <label>Nombre del nuevo cliente *</label><input id="f-cli-nuevo" placeholder="Nombre o razón social">
+    <label style="margin-top:6px">Teléfono (WhatsApp)</label><input id="f-cli-tel" placeholder="343-4XXXXXX">
+    <span style="font-size:11px;color:var(--muted);display:block;margin-top:3px">Se guarda automáticamente en Clientes.</span>
+  </div>`;}
+function onCliSelect(sel){
+  const row=document.getElementById('row-cli-nuevo');
+  if(row)row.style.display=sel.value==='__nuevo__'?'':'none';
+}
+function resolverCliente(){
+  const sel=document.getElementById('f-cliente');if(!sel)return '';
+  if(sel.value!=='__nuevo__')return sel.value;
+  const nEl=document.getElementById('f-cli-nuevo');
+  const nombre=(nEl?nEl.value:'').trim();
+  if(!nombre)return null;
+  const tel=((document.getElementById('f-cli-tel')||{value:''}).value||'').trim();
+  const existente=DB.clientes.find(c=>(c.nombre||'').toLowerCase()===nombre.toLowerCase());
+  if(!existente)DB.clientes.unshift({id:generarId(),nombre,tel,email:'',notas:''});
+  else if(tel&&!existente.tel)existente.tel=tel;
+  return nombre;
+}
 function dlClientes(){return '<datalist id="dl-clientes">'+DB.clientes.map(c=>`<option value="${c.nombre}">`).join('')+'</datalist>';}
 function dlCategorias(){const cats=[...new Set(DB.productos.map(p=>(p.categoria||'').trim()).filter(Boolean))];return '<datalist id="dl-categorias">'+cats.map(c=>`<option value="${c}">`).join('')+'</datalist>';}
 
@@ -1143,7 +1170,8 @@ const FORMS={
     <div class="form-row"><label>Email</label><input id="f-email" value="${d.email||''}"></div>
     <div class="form-row"><label>Notas</label><textarea id="f-notas">${d.notas||''}</textarea></div>`,
   ven:(d={})=>`<h3>${d.cliente?'Editar venta':'Nueva venta'}</h3>
-    <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
+    <div class="form-row"><label>Cliente *</label><select id="f-cliente" onchange="onCliSelect(this)">${cliOpts(d.cliente)}</select></div>
+    ${rowCliNuevo()}
     <div class="form-row"><label>Producto / Servicio</label><select id="f-producto" onchange="onProdSelect(this)">${prodOpts(d.producto||d.descripcion)}</select></div>
     <div class="form-row" id="row-prod-nuevo" style="display:none">
       <label>Nombre del nuevo producto/servicio *</label><input id="f-prod-nuevo" placeholder="Ej: Mantenimiento web mensual">
@@ -1164,14 +1192,16 @@ const FORMS={
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Nuevo'?'selected':''}>Nuevo</option><option ${d.estado==='En seguimiento'?'selected':''}>En seguimiento</option><option ${d.estado==='Convertido'?'selected':''}>Convertido</option><option ${d.estado==='Perdido'?'selected':''}>Perdido</option></select></div>
     <div class="form-row"><label>Fecha</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>`,
   cob:(d={})=>`<h3>${d.cliente?'Editar cobranza':'Nueva cobranza'}</h3>
-    <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
+    <div class="form-row"><label>Cliente *</label><select id="f-cliente" onchange="onCliSelect(this)">${cliOpts(d.cliente)}</select></div>
+    ${rowCliNuevo()}
     <div class="form-row"><label>Concepto</label><input id="f-concepto" value="${d.concepto||''}"></div>
     <div class="form-row"><label>Monto total *</label><input type="number" id="f-total" value="${d.total||d.monto||''}" step="0.01"></div>
     <div class="form-row"><label>Monto abonado</label><input type="number" id="f-cobrado" value="${d.cobrado||0}" step="0.01"></div>
     <div class="form-row"><label>Vencimiento</label><input type="date" id="f-venc" value="${d.vencimiento||today()}"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Pendiente'?'selected':''}>Pendiente</option><option ${d.estado==='Cobro Parcial'?'selected':''}>Cobro Parcial</option><option ${d.estado==='Cobrado'?'selected':''}>Cobrado</option><option ${d.estado==='Vencido'?'selected':''}>Vencido</option></select></div>`,
   pre:(d={})=>`<h3>${d.cliente?'Editar presupuesto':'Nuevo presupuesto'}</h3>
-    <div class="form-row"><label>Cliente *</label><select id="f-cliente">${cliOpts(d.cliente)}</select></div>
+    <div class="form-row"><label>Cliente *</label><select id="f-cliente" onchange="onCliSelect(this)">${cliOpts(d.cliente)}</select></div>
+    ${rowCliNuevo()}
     <div class="form-row"><label>Producto / Servicio</label><select id="f-producto" onchange="onProdSelect(this)">${prodOpts(d.producto||d.descripcion)}</select></div>
     <div class="form-row" id="row-prod-nuevo" style="display:none">
       <label>Nombre del nuevo producto/servicio *</label><input id="f-prod-nuevo" placeholder="Ej: Rediseño de marca">
@@ -1230,7 +1260,9 @@ function saveForm(){
     obj.nombre=document.getElementById('f-nombre').value;obj.tel=document.getElementById('f-tel').value;obj.email=document.getElementById('f-email').value;obj.notas=document.getElementById('f-notas').value;
     if(!obj.nombre)return alert('Nombre requerido');
   }else if(t==='ven'){
-    obj.cliente=document.getElementById('f-cliente').value;
+    const cliSel=resolverCliente();
+    if(cliSel===null)return alert('Escribí el nombre del nuevo cliente');
+    obj.cliente=cliSel;
     if(!obj.cliente)return alert('Cliente requerido');
     const prodV=resolverProducto();
     if(prodV===null)return alert('Escribí el nombre del nuevo producto/servicio');
@@ -1261,7 +1293,9 @@ function saveForm(){
     if(!obj.contacto)return alert('Contacto requerido');
     if(!obj.tel){const cc=DB.clientes.find(x=>x.nombre===obj.contacto);if(cc&&cc.tel)obj.tel=cc.tel;}
   }else if(t==='cob'){
-    obj.cliente=document.getElementById('f-cliente').value;obj.concepto=document.getElementById('f-concepto').value;obj.total=document.getElementById('f-total').value;obj.cobrado=document.getElementById('f-cobrado').value;obj.vencimiento=document.getElementById('f-venc').value;obj.estado=document.getElementById('f-estado').value;
+    const cliCob=resolverCliente();
+    if(cliCob===null)return alert('Escribí el nombre del nuevo cliente');
+    obj.cliente=cliCob;obj.concepto=document.getElementById('f-concepto').value;obj.total=document.getElementById('f-total').value;obj.cobrado=document.getElementById('f-cobrado').value;obj.vencimiento=document.getElementById('f-venc').value;obj.estado=document.getElementById('f-estado').value;
     if(!obj.cliente)return alert('Cliente requerido');
     // Sync CC: pago registrado
     const montoCobrado=parseNum(obj.cobrado);
@@ -1269,7 +1303,9 @@ function saveForm(){
       syncCC(obj.cliente,'Pago: '+obj.concepto,montoCobrado,'Pago',obj.vencimiento,'cob_'+obj.id);
     }
   }else if(t==='pre'){
-    obj.cliente=document.getElementById('f-cliente').value;
+    const cliSel=resolverCliente();
+    if(cliSel===null)return alert('Escribí el nombre del nuevo cliente');
+    obj.cliente=cliSel;
     if(!obj.cliente)return alert('Cliente requerido');
     const prodP=resolverProducto();
     if(prodP===null)return alert('Escribí el nombre del nuevo producto/servicio');
