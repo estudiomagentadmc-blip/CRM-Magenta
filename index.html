@@ -319,7 +319,7 @@ tbody tr:hover td{background:#FAFAF8}
         <h3 id="cc-title">Cuenta corriente</h3>
         <div class="cc-header">
           <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px">Saldo actual</div><div class="cc-saldo" id="cc-saldo-display">$0</div></div>
-          <button class="btn btn-primary btn-sm" onclick="openCCMovimiento()">+ Movimiento</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" onclick="generarPDFCC()" title="Descargar la cuenta corriente en PDF"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF</button><button class="btn btn-primary btn-sm" onclick="openCCMovimiento()">+ Movimiento</button></div>
         </div>
         <div class="card"><div class="table-wrap"><table>
           <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Saldo</th><th></th></tr></thead>
@@ -1140,6 +1140,100 @@ function generarPDF(tipo, i){
 
   const filename=(esPresupuesto?'Presupuesto':'Comprobante')+'_'+numero+'_'+(item.cliente||'cliente').replace(/[^a-zA-Z0-9]/g,'_')+'.pdf';
   doc.save(filename);
+}
+
+// PDF CUENTA CORRIENTE (identidad visual Magenta)
+function generarPDFCC(){
+  const cliente=ccClienteId;
+  const movs=(DB.cuentaCorriente[cliente]||[]).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const magenta=[237,30,121],rosa=[253,236,244],negro=[26,25,24],gris=[122,120,111],borde=[226,224,216],verde=[45,95,63];
+  const signo=v=>(v<0?'-':'')+money(Math.abs(v));
+  const logos=document.querySelectorAll('.magenta-credit img');
+  let totCargos=0,totPagos=0;
+  movs.forEach(m=>{if(m.tipo==='Cargo')totCargos+=parseNum(m.monto);else totPagos+=parseNum(m.monto);});
+  const deuda=totCargos-totPagos;
+
+  // Encabezado con marca
+  doc.setFillColor(...magenta);doc.rect(0,0,210,4,'F');
+  try{
+    if(logos[0])doc.addImage(logos[0].src,'PNG',15,11,14,14);
+    if(logos[1])doc.addImage(logos[1].src,'PNG',32,15.5,36,5.5);
+  }catch(e){doc.setTextColor(...magenta);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('magenta',15,20);}
+  doc.setTextColor(...negro);doc.setFont('helvetica','bold');doc.setFontSize(15);
+  doc.text('ESTADO DE CUENTA',195,17,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...gris);
+  doc.text('Cuenta corriente · Emitido el '+fmt(today()),195,23,{align:'right'});
+  doc.setDrawColor(...borde);doc.setLineWidth(0.3);doc.line(15,31,195,31);
+
+  // Cliente
+  const cli=DB.clientes.find(c=>c.nombre===cliente);
+  doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...gris);doc.text('CLIENTE',15,39);
+  doc.setFontSize(13);doc.setTextColor(...negro);doc.text(doc.splitTextToSize(cliente||'—',95)[0],15,46);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...gris);
+  let yc=52;
+  if(cli&&cli.tel){doc.text(String(cli.tel),15,yc);yc+=5;}
+  if(cli&&cli.email){doc.text(String(cli.email),15,yc);yc+=5;}
+
+  // Recuadro de saldo
+  const etiqueta=deuda>0?'SALDO A COBRAR':deuda<0?'SALDO A FAVOR DEL CLIENTE (A PAGAR)':'CUENTA AL DÍA';
+  doc.setFillColor(...(deuda>0?rosa:[232,242,236]));doc.roundedRect(115,36,80,24,2,2,'F');
+  doc.setFillColor(...(deuda>0?magenta:verde));doc.rect(115,36,1.5,24,'F');
+  doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(...(deuda>0?magenta:verde));doc.text(etiqueta,120,43);
+  doc.setFontSize(18);doc.setTextColor(...negro);doc.text(money(Math.abs(deuda)),120,53);
+  doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...gris);
+  doc.text('Cargos '+money(totCargos)+'  ·  Pagos '+money(totPagos),120,58);
+
+  // Tabla de movimientos
+  const cols={fecha:17,concepto:38,cargo:136,pago:165,saldo:193};
+  const encabezado=y=>{
+    doc.setFillColor(...rosa);doc.rect(15,y-5,180,8,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...magenta);
+    doc.text('FECHA',cols.fecha,y);doc.text('CONCEPTO',cols.concepto,y);
+    doc.text('CARGO',cols.cargo,y,{align:'right'});doc.text('PAGO',cols.pago,y,{align:'right'});doc.text('SALDO',cols.saldo,y,{align:'right'});
+    return y+8;
+  };
+  let y=encabezado(Math.max(yc,62)+10);
+  let running=0;
+  doc.setFontSize(9);
+  if(!movs.length){doc.setFont('helvetica','normal');doc.setTextColor(...gris);doc.text('Sin movimientos registrados.',cols.fecha,y);y+=8;}
+  movs.forEach((m,i)=>{
+    const monto=parseNum(m.monto),esCargo=m.tipo==='Cargo';
+    running+=esCargo?monto:-monto;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);
+    const lineas=doc.splitTextToSize(m.concepto||'—',80);
+    const alto=Math.max(7,lineas.length*4.2+3);
+    if(y+alto>268){doc.addPage();doc.setFillColor(...magenta);doc.rect(0,0,210,4,'F');y=encabezado(18);doc.setFont('helvetica','normal');doc.setFontSize(9);}
+    if(i%2===1){doc.setFillColor(250,249,246);doc.rect(15,y-4.5,180,alto,'F');}
+    doc.setTextColor(...negro);
+    doc.text(fmt(m.fecha),cols.fecha,y);doc.text(lineas,cols.concepto,y);
+    doc.text(esCargo?money(monto):'',cols.cargo,y,{align:'right'});
+    doc.setTextColor(...verde);doc.text(esCargo?'':money(monto),cols.pago,y,{align:'right'});
+    doc.setFont('helvetica','bold');doc.setTextColor(...(running>0?magenta:negro));doc.text(signo(running),cols.saldo,y,{align:'right'});
+    y+=alto;
+  });
+  // Totales
+  if(y+14>268){doc.addPage();doc.setFillColor(...magenta);doc.rect(0,0,210,4,'F');y=18;}
+  doc.setDrawColor(...magenta);doc.setLineWidth(0.5);doc.line(15,y-2,195,y-2);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...negro);
+  doc.text('TOTALES',cols.concepto,y+4);
+  doc.text(money(totCargos),cols.cargo,y+4,{align:'right'});
+  doc.setTextColor(...verde);doc.text(money(totPagos),cols.pago,y+4,{align:'right'});
+  doc.setTextColor(...(deuda>0?magenta:negro));doc.text(signo(deuda),cols.saldo,y+4,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...gris);
+  doc.text('Saldo positivo: el cliente debe ese importe. Saldo negativo: saldo a favor del cliente.',15,y+11);
+
+  // Pie en todas las páginas
+  const n=doc.getNumberOfPages();
+  for(let p=1;p<=n;p++){
+    doc.setPage(p);
+    doc.setDrawColor(...magenta);doc.setLineWidth(0.4);doc.line(15,282,195,282);
+    doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...gris);
+    doc.text('Generado con CRM Magenta · crm.estudiomagenta.com.ar · Este resumen no reemplaza a una factura oficial.',15,287);
+    doc.text('Página '+p+' de '+n,195,287,{align:'right'});
+  }
+  doc.save('Cuenta_corriente_'+(cliente||'cliente').replace(/[^a-zA-Z0-9]/g,'_')+'_'+today()+'.pdf');
 }
 
 // CC AUTO-SYNC: registra movimiento en CC cuando se guarda una venta/cobranza
