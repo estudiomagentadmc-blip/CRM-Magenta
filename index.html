@@ -283,6 +283,7 @@ tbody tr:hover td{background:#FAFAF8}
         </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
           <span id="fecha-hoy" style="font-size:12px;color:var(--muted)"></span>
+          <button class="btn btn-sm" onclick="openMiNegocio()" title="Cargá tu logo y tus datos para los PDF"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Mi negocio</button>
           <button class="btn btn-sm" onclick="exportarExcel()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
           <label class="btn btn-sm" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(event)"></label>
           <button class="btn btn-sm" onclick="exportarBackup()" title="Descarga un archivo .json con todos tus datos"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Backup</button>
@@ -374,7 +375,7 @@ tbody tr:hover td{background:#FAFAF8}
 
     <!-- PRESUPUESTOS -->
     <div class="page" id="page-presupuestos">
-      <div class="page-header"><div class="page-title">Presupuestos</div><button class="btn btn-primary" onclick="openModal('pre')">+ Nuevo presupuesto</button></div>
+      <div class="page-header"><div class="page-title">Presupuestos</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn" onclick="openMiNegocio()" title="Cargá tu logo y tus datos para los PDF"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Mi logo</button><button class="btn btn-primary" onclick="openModal('pre')">+ Nuevo presupuesto</button></div></div>
       <div class="toolbar">
         <input id="pre-search" placeholder="Buscar..." oninput="renderPresupuestos()">
         <select id="pre-filter" onchange="renderPresupuestos()"><option value="">Todos</option><option>Borrador</option><option>Enviada</option><option>Aceptada</option><option>Rechazada</option></select>
@@ -442,7 +443,7 @@ const CLIENT_ID='60259606547-k4qmdn827n6tjkvm5k5053hp6dfmqboq.apps.googleusercon
 const SCOPES='https://www.googleapis.com/auth/drive.appdata';
 const DRIVE_FILE='crm-minegocio-data.json';
 const STORE_KEY='crm_minegocio_v1';
-const DB={clientes:[],ventas:[],leads:[],cobranzas:[],presupuestos:[],gastos:[],productos:[],cuentaCorriente:{}};
+const DB={clientes:[],ventas:[],leads:[],cobranzas:[],presupuestos:[],gastos:[],productos:[],cuentaCorriente:{},config:{}};
 let driveFileId=null,accessToken=null,saveTimer=null,usingDrive=false,charts={};
 let ccClienteId=null;
 
@@ -1002,6 +1003,109 @@ function irARCA(i){
   if(confirm(msg)){window.open('https://arca.gob.ar/','_blank');}
 }
 
+// MI NEGOCIO (logo y datos propios para los PDF)
+function openMiNegocio(){
+  const c=DB.config||{};
+  window._logoTmp={logo:c.logo||'',logoW:c.logoW||0,logoH:c.logoH||0};
+  const o=document.createElement('div');
+  o.className='modal-overlay open';o.id='negocio-overlay';
+  o.onclick=e=>{if(e.target===o)o.remove();};
+  o.innerHTML=`<div class="modal">
+    <h3>Mi negocio</h3>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 14px">Tu logo y tus datos salen en los presupuestos, comprobantes y estados de cuenta en PDF.</p>
+    <div class="form-row"><label>Logo</label>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div id="logo-prev" style="width:150px;height:64px;border:1px dashed var(--border2);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden"></div>
+        <label class="btn btn-sm" style="cursor:pointer">Subir logo<input type="file" accept="image/*" style="display:none" onchange="cargarLogo(this)"></label>
+        <button class="btn btn-sm" onclick="window._logoTmp={logo:'',logoW:0,logoH:0};prevLogo()">Quitar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Ideal: PNG con fondo transparente.</div>
+    </div>
+    <div class="form-row"><label>Nombre del negocio</label><input id="neg-nombre" placeholder="Ej: Panadería Don José" value="${(c.nombre||'').replace(/"/g,'&quot;')}"></div>
+    <div class="form-row"><label>Datos de contacto (opcional)</label><input id="neg-contacto" placeholder="Ej: 343 555-1234 · hola@minegocio.com" value="${(c.contacto||'').replace(/"/g,'&quot;')}"></div>
+    <div class="modal-footer"><button class="btn" onclick="document.getElementById('negocio-overlay').remove()">Cancelar</button><button class="btn btn-primary" onclick="saveMiNegocio()">Guardar</button></div>
+  </div>`;
+  document.body.appendChild(o);prevLogo();
+}
+function prevLogo(){
+  const t=window._logoTmp,d=document.getElementById('logo-prev');
+  d.innerHTML=t.logo?`<img src="${t.logo}" style="max-width:100%;max-height:100%">`:'<span style="font-size:11px;color:var(--muted)">Sin logo</span>';
+}
+function cargarLogo(input){
+  const f=input.files[0];if(!f)return;
+  if(!f.type.startsWith('image/'))return alert('Elegí una imagen (PNG o JPG).');
+  const r=new FileReader();
+  r.onload=()=>{const img=new Image();img.onload=()=>{
+    const k=Math.min(1,600/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));
+    const x=c.getContext('2d');
+    const png=/png|webp|svg|gif/.test(f.type);
+    if(!png){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);}
+    x.drawImage(img,0,0,c.width,c.height);
+    window._logoTmp={logo:png?c.toDataURL('image/png'):c.toDataURL('image/jpeg',0.9),logoW:c.width,logoH:c.height};
+    prevLogo();
+  };img.onerror=()=>alert('No pudimos leer esa imagen. Probá con otro archivo PNG o JPG.');img.src=r.result;};
+  r.readAsDataURL(f);
+}
+function saveMiNegocio(){
+  const t=window._logoTmp||{};
+  DB.config=Object.assign({},DB.config,{logo:t.logo||'',logoW:t.logoW||0,logoH:t.logoH||0,nombre:document.getElementById('neg-nombre').value.trim(),contacto:document.getElementById('neg-contacto').value.trim()});
+  save();document.getElementById('negocio-overlay').remove();
+}
+
+// PDF: encabezado con la marca del usuario y pie con logotipo Magenta en gris
+const PDF_C={acento:[38,38,38],suave:[244,243,239],negro:[26,25,24],gris:[122,120,111],borde:[226,224,216],verde:[45,95,63],rojo:[192,57,43]};
+let _logoMgGris=null;
+function logotipoMagentaGris(){
+  if(_logoMgGris)return _logoMgGris;
+  const img=document.querySelectorAll('.magenta-credit img')[1];
+  if(!img||!img.naturalWidth)return null;
+  const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;
+  const x=c.getContext('2d');x.drawImage(img,0,0);
+  const d=x.getImageData(0,0,c.width,c.height);
+  for(let i=0;i<d.data.length;i+=4){d.data[i]=d.data[i+1]=d.data[i+2]=150;}
+  x.putImageData(d,0,0);
+  _logoMgGris={src:c.toDataURL('image/png'),w:c.width,h:c.height};
+  return _logoMgGris;
+}
+function pdfEncabezado(doc,titulo,subtitulo){
+  const c=DB.config||{},C=PDF_C;
+  doc.setFillColor(...C.acento);doc.rect(0,0,210,3,'F');
+  let yTxt=19;
+  if(c.logo&&c.logoW&&c.logoH){
+    const k=Math.min(60/c.logoW,15/c.logoH);
+    try{doc.addImage(c.logo,c.logo.indexOf('image/jpeg')>0?'JPEG':'PNG',15,9,c.logoW*k,c.logoH*k);yTxt=28.5;}catch(e){}
+  }
+  if(yTxt===19&&c.nombre){
+    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.negro);
+    doc.text(doc.splitTextToSize(c.nombre,100)[0],15,yTxt);yTxt=25;
+    if(c.contacto){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.gris);doc.text(doc.splitTextToSize(c.contacto,100)[0],15,yTxt);}
+  }else if(yTxt===28.5&&(c.nombre||c.contacto)){
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.gris);
+    doc.text(doc.splitTextToSize([c.nombre,c.contacto].filter(Boolean).join(' · '),100)[0],15,yTxt);
+  }
+  doc.setTextColor(...C.negro);doc.setFont('helvetica','bold');doc.setFontSize(15);
+  doc.text(titulo,195,17,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...C.gris);
+  doc.text(subtitulo,195,23,{align:'right'});
+  doc.setDrawColor(...C.borde);doc.setLineWidth(0.3);doc.line(15,32,195,32);
+}
+function pdfPie(doc,nota){
+  const n=doc.getNumberOfPages(),C=PDF_C,mg=logotipoMagentaGris();
+  for(let p=1;p<=n;p++){
+    doc.setPage(p);
+    doc.setDrawColor(...C.borde);doc.setLineWidth(0.3);doc.line(15,281,195,281);
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(...C.gris);
+    doc.text('Generado con',15,286.5);
+    let x=15+doc.getTextWidth('Generado con')+1.5;
+    if(mg){const h=2.6,w=mg.w/mg.h*h;try{doc.addImage(mg.src,'PNG',x,284.2,w,h);x+=w+1.5;}catch(e){}}
+    else{doc.text('CRM Magenta',x,286.5);x+=doc.getTextWidth('CRM Magenta')+1.5;}
+    doc.text('· crm.estudiomagenta.com.ar',x,286.5);
+    doc.text(n>1?'Página '+p+' de '+n:'',195,286.5,{align:'right'});
+    if(nota)doc.text(nota,15,291);
+  }
+}
+
 // PDF COMPROBANTE
 function generarPDF(tipo, i){
   const {jsPDF}=window.jspdf;
@@ -1013,31 +1117,13 @@ function generarPDF(tipo, i){
   const fecha = fmt(item.fecha||today());
 
   // Colores
-  const verde=[45,95,63];
-  const gris=[122,120,111];
-  const negro=[26,25,24];
-  const borde=[226,224,216];
+  const verde=PDF_C.acento;
+  const gris=PDF_C.gris;
+  const negro=PDF_C.negro;
+  const borde=PDF_C.borde;
 
-  // Header fondo verde
-  doc.setFillColor(...verde);
-  doc.rect(0,0,210,38,'F');
-
-  // Título
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(22);
-  doc.setFont('helvetica','bold');
-  doc.text(titulo,15,18);
-
-  // Número y fecha en header
-  doc.setFontSize(10);
-  doc.setFont('helvetica','normal');
-  doc.text('N° '+numero,15,27);
-  doc.text('Fecha: '+fecha,15,33);
-
-  // Línea separadora
-  doc.setDrawColor(...borde);
-  doc.setLineWidth(0.3);
-  doc.line(15,44,195,44);
+  // Encabezado con la marca del negocio
+  pdfEncabezado(doc,titulo,'N° '+numero+' · Fecha: '+fecha);
 
   // Datos del cliente
   doc.setTextColor(...gris);
@@ -1127,45 +1213,27 @@ function generarPDF(tipo, i){
     doc.text('Saldo cuenta corriente: '+money(saldo),15,yTotal+20);
   }
 
-  // Footer
-  doc.setFillColor(...verde);
-  doc.rect(0,272,210,25,'F');
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(8);
-  doc.setFont('helvetica','normal');
-  doc.text('Comprobante generado por Mi Negocio CRM',105,282,'center');
-  doc.setFontSize(7);
-  doc.setTextColor(200,220,210);
-  doc.text('Este documento no reemplaza a una factura oficial. Para facturar ingresá a ARCA: www.afip.gob.ar/facturae',105,288,'center');
+  // Pie
+  pdfPie(doc,'Este documento no reemplaza a una factura oficial.');
 
   const filename=(esPresupuesto?'Presupuesto':'Comprobante')+'_'+numero+'_'+(item.cliente||'cliente').replace(/[^a-zA-Z0-9]/g,'_')+'.pdf';
   doc.save(filename);
 }
 
-// PDF CUENTA CORRIENTE (identidad visual Magenta)
+// PDF CUENTA CORRIENTE
 function generarPDFCC(){
   const cliente=ccClienteId;
   const movs=(DB.cuentaCorriente[cliente]||[]).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const magenta=[237,30,121],rosa=[253,236,244],negro=[26,25,24],gris=[122,120,111],borde=[226,224,216],verde=[45,95,63];
+  const {acento,suave,negro,gris,borde,verde,rojo}=PDF_C;
   const signo=v=>(v<0?'-':'')+money(Math.abs(v));
-  const logos=document.querySelectorAll('.magenta-credit img');
   let totCargos=0,totPagos=0;
   movs.forEach(m=>{if(m.tipo==='Cargo')totCargos+=parseNum(m.monto);else totPagos+=parseNum(m.monto);});
   const deuda=totCargos-totPagos;
 
-  // Encabezado con marca
-  doc.setFillColor(...magenta);doc.rect(0,0,210,4,'F');
-  try{
-    if(logos[0])doc.addImage(logos[0].src,'PNG',15,11,14,14);
-    if(logos[1])doc.addImage(logos[1].src,'PNG',32,15.5,36,5.5);
-  }catch(e){doc.setTextColor(...magenta);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('magenta',15,20);}
-  doc.setTextColor(...negro);doc.setFont('helvetica','bold');doc.setFontSize(15);
-  doc.text('ESTADO DE CUENTA',195,17,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...gris);
-  doc.text('Cuenta corriente · Emitido el '+fmt(today()),195,23,{align:'right'});
-  doc.setDrawColor(...borde);doc.setLineWidth(0.3);doc.line(15,31,195,31);
+  // Encabezado con la marca del negocio
+  pdfEncabezado(doc,'ESTADO DE CUENTA','Cuenta corriente · Emitido el '+fmt(today()));
 
   // Cliente
   const cli=DB.clientes.find(c=>c.nombre===cliente);
@@ -1178,9 +1246,9 @@ function generarPDFCC(){
 
   // Recuadro de saldo
   const etiqueta=deuda>0?'SALDO A COBRAR':deuda<0?'SALDO A FAVOR DEL CLIENTE (A PAGAR)':'CUENTA AL DÍA';
-  doc.setFillColor(...(deuda>0?rosa:[232,242,236]));doc.roundedRect(115,36,80,24,2,2,'F');
-  doc.setFillColor(...(deuda>0?magenta:verde));doc.rect(115,36,1.5,24,'F');
-  doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(...(deuda>0?magenta:verde));doc.text(etiqueta,120,43);
+  doc.setFillColor(...(deuda>0?[252,236,234]:[232,242,236]));doc.roundedRect(115,36,80,24,2,2,'F');
+  doc.setFillColor(...(deuda>0?rojo:verde));doc.rect(115,36,1.5,24,'F');
+  doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.setTextColor(...(deuda>0?rojo:verde));doc.text(etiqueta,120,43);
   doc.setFontSize(18);doc.setTextColor(...negro);doc.text(money(Math.abs(deuda)),120,53);
   doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...gris);
   doc.text('Cargos '+money(totCargos)+'  ·  Pagos '+money(totPagos),120,58);
@@ -1188,8 +1256,8 @@ function generarPDFCC(){
   // Tabla de movimientos
   const cols={fecha:17,concepto:38,cargo:136,pago:165,saldo:193};
   const encabezado=y=>{
-    doc.setFillColor(...rosa);doc.rect(15,y-5,180,8,'F');
-    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...magenta);
+    doc.setFillColor(...suave);doc.rect(15,y-5,180,8,'F');
+    doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(...gris);
     doc.text('FECHA',cols.fecha,y);doc.text('CONCEPTO',cols.concepto,y);
     doc.text('CARGO',cols.cargo,y,{align:'right'});doc.text('PAGO',cols.pago,y,{align:'right'});doc.text('SALDO',cols.saldo,y,{align:'right'});
     return y+8;
@@ -1204,35 +1272,28 @@ function generarPDFCC(){
     doc.setFont('helvetica','normal');doc.setFontSize(9);
     const lineas=doc.splitTextToSize(m.concepto||'—',80);
     const alto=Math.max(7,lineas.length*4.2+3);
-    if(y+alto>268){doc.addPage();doc.setFillColor(...magenta);doc.rect(0,0,210,4,'F');y=encabezado(18);doc.setFont('helvetica','normal');doc.setFontSize(9);}
+    if(y+alto>268){doc.addPage();doc.setFillColor(...acento);doc.rect(0,0,210,3,'F');y=encabezado(18);doc.setFont('helvetica','normal');doc.setFontSize(9);}
     if(i%2===1){doc.setFillColor(250,249,246);doc.rect(15,y-4.5,180,alto,'F');}
     doc.setTextColor(...negro);
     doc.text(fmt(m.fecha),cols.fecha,y);doc.text(lineas,cols.concepto,y);
     doc.text(esCargo?money(monto):'',cols.cargo,y,{align:'right'});
     doc.setTextColor(...verde);doc.text(esCargo?'':money(monto),cols.pago,y,{align:'right'});
-    doc.setFont('helvetica','bold');doc.setTextColor(...(running>0?magenta:negro));doc.text(signo(running),cols.saldo,y,{align:'right'});
+    doc.setFont('helvetica','bold');doc.setTextColor(...(running>0?rojo:negro));doc.text(signo(running),cols.saldo,y,{align:'right'});
     y+=alto;
   });
   // Totales
-  if(y+14>268){doc.addPage();doc.setFillColor(...magenta);doc.rect(0,0,210,4,'F');y=18;}
-  doc.setDrawColor(...magenta);doc.setLineWidth(0.5);doc.line(15,y-2,195,y-2);
+  if(y+14>268){doc.addPage();doc.setFillColor(...acento);doc.rect(0,0,210,3,'F');y=18;}
+  doc.setDrawColor(...acento);doc.setLineWidth(0.5);doc.line(15,y-2,195,y-2);
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...negro);
   doc.text('TOTALES',cols.concepto,y+4);
   doc.text(money(totCargos),cols.cargo,y+4,{align:'right'});
   doc.setTextColor(...verde);doc.text(money(totPagos),cols.pago,y+4,{align:'right'});
-  doc.setTextColor(...(deuda>0?magenta:negro));doc.text(signo(deuda),cols.saldo,y+4,{align:'right'});
+  doc.setTextColor(...(deuda>0?rojo:negro));doc.text(signo(deuda),cols.saldo,y+4,{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...gris);
   doc.text('Saldo positivo: el cliente debe ese importe. Saldo negativo: saldo a favor del cliente.',15,y+11);
 
   // Pie en todas las páginas
-  const n=doc.getNumberOfPages();
-  for(let p=1;p<=n;p++){
-    doc.setPage(p);
-    doc.setDrawColor(...magenta);doc.setLineWidth(0.4);doc.line(15,282,195,282);
-    doc.setFontSize(7.5);doc.setFont('helvetica','normal');doc.setTextColor(...gris);
-    doc.text('Generado con CRM Magenta · crm.estudiomagenta.com.ar · Este resumen no reemplaza a una factura oficial.',15,287);
-    doc.text('Página '+p+' de '+n,195,287,{align:'right'});
-  }
+  pdfPie(doc,'Este resumen no reemplaza a una factura oficial.');
   doc.save('Cuenta_corriente_'+(cliente||'cliente').replace(/[^a-zA-Z0-9]/g,'_')+'_'+today()+'.pdf');
 }
 
@@ -1482,7 +1543,7 @@ function cargarDatosEjemplo(){
 }
 function borrarDatosEjemplo(){
   if(!confirm('¿Borrar todos los datos cargados? Esta acción no se puede deshacer.'))return;
-  Object.keys(DB).forEach(k=>{DB[k]=Array.isArray(DB[k])?[]:{};});
+  Object.keys(DB).forEach(k=>{if(k!=='config')DB[k]=Array.isArray(DB[k])?[]:{};});
   save();renderAll();
 }
 
