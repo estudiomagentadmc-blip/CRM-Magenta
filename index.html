@@ -1070,6 +1070,7 @@ function openMiNegocio(){
     <div class="form-row"><label>Nombre de fantasía</label><input id="neg-nombre" placeholder="Ej: Panadería Don José" value="${escHTML(c.nombre)}"></div>
     <div class="form-row"><label>Razón social</label><input id="neg-razon" placeholder="Ej: Don José SRL" value="${escHTML(c.razon)}"></div>
     <div class="form-row" style="display:flex;gap:8px"><div style="flex:1"><label>CUIT</label><input id="neg-cuit" placeholder="30-12345678-9" value="${escHTML(c.cuit)}"></div><div style="flex:1"><label>Condición frente al IVA</label><select id="neg-iva">${['','Responsable Inscripto','Monotributista','IVA Exento'].map(o=>`<option value="${o}" ${(c.condIva||'')===o?'selected':''}>${o||'— (opcional)'}</option>`).join('')}</select></div></div>
+    <div class="form-row"><label>Inicio de actividades</label><input type="date" id="neg-inicio" value="${escHTML(c.inicioAct)}"></div>
     <div class="form-row"><label>Dirección (opcional)</label><input id="neg-dir" placeholder="Ej: San Martín 123, Paraná" value="${escHTML(c.direccion)}"></div>
     <div class="form-row" style="display:flex;gap:8px"><div style="flex:1"><label>Teléfono (opcional)</label><input id="neg-tel" placeholder="343 555-1234" value="${escHTML(c.telefono)}"></div><div style="flex:1"><label>Otro contacto (opcional)</label><input id="neg-contacto" placeholder="Email, Instagram, web..." value="${escHTML(c.contacto)}"></div></div>
     <div class="form-row" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
@@ -1104,7 +1105,7 @@ function cargarLogo(input){
 function leerMiNegocio(){
   const v=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
   const ta=document.getElementById('neg-tauto');
-  return {nombre:v('neg-nombre'),razon:v('neg-razon'),cuit:v('neg-cuit'),condIva:v('neg-iva'),direccion:v('neg-dir'),telefono:v('neg-tel'),contacto:v('neg-contacto'),ticketAuto:!!(ta&&ta.checked)};
+  return {nombre:v('neg-nombre'),razon:v('neg-razon'),cuit:v('neg-cuit'),condIva:v('neg-iva'),inicioAct:v('neg-inicio'),direccion:v('neg-dir'),telefono:v('neg-tel'),contacto:v('neg-contacto'),ticketAuto:!!(ta&&ta.checked)};
 }
 function saveMiNegocio(){
   const t=window._logoTmp||{};
@@ -1152,6 +1153,7 @@ function pdfEncabezado(doc,titulo,subtitulo){
   doc.text(titulo,195,17,{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...C.gris);
   doc.text(subtitulo,195,23,{align:'right'});
+  if(c.inicioAct){doc.setFontSize(7.5);doc.text('Inicio de actividades: '+fmt(c.inicioAct),195,28,{align:'right'});}
   doc.setDrawColor(...C.borde);doc.setLineWidth(0.3);doc.line(15,32,195,32);
 }
 function pdfPie(doc,nota){
@@ -1414,6 +1416,7 @@ function ticketCabecera(c){
   if(c.razon)h+=`<div class="c">${escHTML(c.razon)}</div>`;
   if(c.cuit)h+=`<div class="c">CUIT ${escHTML(c.cuit)}</div>`;
   if(c.condIva)h+=`<div class="c">${escHTML(c.condIva)}</div>`;
+  if(c.inicioAct)h+=`<div class="c sm">Inicio de actividades: ${fmt(c.inicioAct)}</div>`;
   if(c.direccion)h+=`<div class="c sm">${escHTML(c.direccion)}</div>`;
   if(c.telefono)h+=`<div class="c sm">Tel. ${escHTML(c.telefono)}</div>`;
   if(c.contacto)h+=`<div class="c sm">${escHTML(c.contacto)}</div>`;
