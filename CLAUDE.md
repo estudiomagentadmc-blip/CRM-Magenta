@@ -30,6 +30,11 @@ CRM gratuito para pymes y emprendedores (Entre Ríos, Argentina), desarrollado p
 - **Patrón "crear al vuelo":** los selects de cliente y producto tienen opción `__nuevo__` que despliega campos inline y crea la entidad al guardar (`resolverCliente()`/`resolverProducto()`, dedup case-insensitive por nombre). Mantener este patrón para nuevas entidades.
 - **Ventas recurrentes:** `procesarRecurrentes()` corre al inicio de `renderAll()`; genera ventas+cobranzas vencidas y agenda `proxima`. Guard de 36 iteraciones.
 - **Cuenta corriente:** los movimientos se sincronizan vía `syncCC(...)` con dedup por `refId` — nunca insertar movimientos a mano sin `refId`.
+- **Datos del comercio:** viven en `DB.config` (`nombre` de fantasía, `razon`, `cuit`, `condIva`, `direccion`, `telefono`, `contacto`, `logo`), se editan en "Mi negocio" y alimentan el encabezado del PDF A4 (`pdfEncabezado`) y del ticket (`ticketCabecera`). Nunca hardcodear datos de un cliente: cada comercio carga los suyos en su instalación. "Borrar todo" preserva `DB.config`.
+- **Numeración de comprobantes:** `item.nro` correlativo y fijo por tipo (`DB.config.seqVen` / `seqPre`), asignado por `asegurarNumeracion()` dentro de `renderAll()`. No usar el índice del array como número (las ventas nuevas se insertan arriba y el número cambiaba).
+- **Ventas con cantidad:** `cantidad` × `precioUnit` = `montoLista`; `monto` es el total con descuento. Ventas viejas sin `cantidad` se leen como 1 × `montoLista`.
+- **Stock:** `moverStockVenta(prev, nueva)` descuenta al realizar la venta y guarda `stockMov` en la venta para revertirlo al editar/borrar. Solo afecta productos tipo Producto con stock cargado. Una venta que ya estaba Realizada antes del control de stock no descuenta al editarla.
+- **Ticket 80 mm (impresora térmica):** HTML impreso desde un iframe oculto (`imprimirTicketDoc`). El `@page` se recalcula con el alto real del contenido (`80mm × alto`, margen 0) para no gastar rollo. Todo en negro, fuente ≥10 pt, una sola columna. Leyenda obligatoria "NO VÁLIDO COMO FACTURA" (el sistema no factura ante ARCA). No mostrar estado de pago en el ticket.
 
 ## Verificación antes de subir
 

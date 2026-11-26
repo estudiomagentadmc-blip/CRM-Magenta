@@ -320,7 +320,7 @@ tbody tr:hover td{background:#FAFAF8}
         <h3 id="cc-title">Cuenta corriente</h3>
         <div class="cc-header">
           <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px">Saldo actual</div><div class="cc-saldo" id="cc-saldo-display">$0</div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" onclick="generarPDFCC()" title="Descargar la cuenta corriente en PDF"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF</button><button class="btn btn-primary btn-sm" onclick="openCCMovimiento()">+ Movimiento</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" onclick="generarPDFCC()" title="Descargar la cuenta corriente en PDF"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF</button><button class="btn btn-sm" onclick="imprimirTicketCC()" title="Imprimir el estado de cuenta en la impresora térmica (80 mm)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Ticket</button><button class="btn btn-primary btn-sm" onclick="openCCMovimiento()">+ Movimiento</button></div>
         </div>
         <div class="card"><div class="table-wrap"><table>
           <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Saldo</th><th></th></tr></thead>
@@ -454,7 +454,8 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 // UTILS
 function generarId(){return Date.now().toString(36)+Math.random().toString(36).substr(2,5);}
 function parseNum(v){return Math.round((parseFloat(v)||0)*100)/100;}
-function money(v){return '$'+(parseNum(v)).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2});}
+function money(v){const n=parseNum(v);return '$'+n.toLocaleString('es-AR',{minimumFractionDigits:Number.isInteger(n)?0:2,maximumFractionDigits:2});}
+function fmtCant(v){return (parseNum(v)||1).toLocaleString('es-AR',{maximumFractionDigits:2});}
 function today(){return new Date().toISOString().slice(0,10);}
 function waLink(tel,msg){
   if(!tel)return null;
@@ -612,11 +613,13 @@ function resolverProducto(){
 
 // Descuento en venta/presupuesto
 function calcVentaFinal(){
-  const mEl=document.getElementById('f-monto'),dEl=document.getElementById('f-desc'),fin=document.getElementById('f-final');
+  const mEl=document.getElementById('f-monto'),dEl=document.getElementById('f-desc'),cEl=document.getElementById('f-cant'),fin=document.getElementById('f-final');
   if(!mEl||!fin)return;
-  const m=parseNum(mEl.value),d=Math.min(Math.max(parseNum(dEl?dEl.value:0),0),100);
+  const cant=cEl?(parseNum(cEl.value)||1):1,unit=parseNum(mEl.value);
+  const m=unit*cant,d=Math.min(Math.max(parseNum(dEl?dEl.value:0),0),100);
   const tot=Math.round(m*(1-d/100)*100)/100;
-  fin.value=money(tot)+(d>0?' — con '+d+'% de descuento':'');
+  const det=[cant!==1?fmtCant(cant)+' × '+money(unit):'',d>0?d+'% de descuento':''].filter(Boolean).join(' · ');
+  fin.value=money(tot)+(det?' — '+det:'');
 }
 
 // Margen en productos
@@ -665,8 +668,9 @@ function procesarRecurrentes(){
     if(!v.proxima){v.proxima=addPeriod(v.fechaCobro||v.fecha,v.recurrencia);changed=true;}
     let guard=0;
     while(v.proxima&&v.proxima<=hoy&&guard<36){
-      const nv={id:generarId(),cliente:v.cliente,producto:v.producto,descripcion:v.producto,monto:v.monto,montoLista:v.montoLista||v.monto,descuento:v.descuento||0,estado:'Realizada',fecha:v.proxima,fechaCobro:v.proxima,recurrencia:'Única',origenRecur:v.id};
+      const nv={id:generarId(),cliente:v.cliente,producto:v.producto,descripcion:v.producto,cantidad:v.cantidad||1,precioUnit:v.precioUnit||0,monto:v.monto,montoLista:v.montoLista||v.monto,descuento:v.descuento||0,estado:'Realizada',fecha:v.proxima,fechaCobro:v.proxima,recurrencia:'Única',origenRecur:v.id};
       DB.ventas.unshift(nv);
+      moverStockVenta(null,nv);
       DB.cobranzas.unshift({id:generarId(),ventaId:nv.id,cliente:nv.cliente,concepto:(nv.producto||'Venta')+' ('+v.recurrencia.toLowerCase()+')',total:nv.monto,cobrado:0,vencimiento:nv.fecha,estado:'Pendiente'});
       syncCC(nv.cliente,'Venta: '+(nv.producto||'sin descripción'),nv.monto,'Cargo',nv.fecha,'venta_'+nv.id);
       v.proxima=addPeriod(v.proxima,v.recurrencia);
@@ -821,7 +825,7 @@ function renderVentas(){
   const rows=DB.ventas.filter(v=>(!q||(v.cliente+v.descripcion+v.producto).toLowerCase().includes(q))&&(!f||v.estado===f));
   document.getElementById('ven-tbody').innerHTML=rows.length?rows.map(v=>{const i=DB.ventas.indexOf(v);return `<tr>
     <td>${v.cliente||'—'}</td>
-    <td>${v.producto||v.descripcion||'—'}${v.recurrencia&&v.recurrencia!=='Única'?` <span class="badge b-blue" title="Se repite: cada período se genera sola la venta y su cobranza">&#8635; ${v.recurrencia}</span>`:''}</td>
+    <td>${v.producto||v.descripcion||'—'}${parseNum(v.cantidad)>1?` <span style="color:var(--muted);font-size:12px">× ${fmtCant(v.cantidad)}</span>`:''}${v.recurrencia&&v.recurrencia!=='Única'?` <span class="badge b-blue" title="Se repite: cada período se genera sola la venta y su cobranza">&#8635; ${v.recurrencia}</span>`:''}</td>
     <td style="font-family:'DM Mono',monospace"${v.descuento>0?` title="Precio de lista ${money(v.montoLista)} con ${v.descuento}% de descuento"`:''}>${money(v.monto)}${v.descuento>0?` <span style="font-size:10px;color:var(--warn)">-${v.descuento}%</span>`:''}</td>
     <td>${badge(v.estado)}</td>
     <td>${fmt(v.fecha)}</td>
@@ -829,6 +833,7 @@ function renderVentas(){
       <button class="action-btn" onclick="editModal('ven',${i})">Ver</button>
       <button class="action-btn" style="color:var(--info);border-color:var(--info-light)" onclick="irARCA(${i})" title="Facturar en ARCA">ARCA</button>
       <button class="action-btn" style="color:var(--accent);border-color:var(--accent-light)" onclick="generarPDF('ven',${i})" title="Descargar comprobante PDF">PDF</button>
+      <button class="action-btn" onclick="imprimirTicket('ven',${i})" title="Imprimir ticket para impresora térmica (80 mm)">Ticket</button>
     </td>
   </tr>`;}).join(''):`<tr><td colspan="6" class="empty-state">Sin ventas</td></tr>`;
 }
@@ -963,13 +968,14 @@ function renderPresupuestos(){
   const rows=DB.presupuestos.filter(o=>(!q||(o.cliente+o.descripcion+o.producto).toLowerCase().includes(q))&&(!f||o.estado===f));
   document.getElementById('pre-tbody').innerHTML=rows.length?rows.map(o=>{const i=DB.presupuestos.indexOf(o);return `<tr>
     <td>${o.cliente||'—'}</td>
-    <td>${o.producto||o.descripcion||'—'}</td>
+    <td>${o.producto||o.descripcion||'—'}${parseNum(o.cantidad)>1?` <span style="color:var(--muted);font-size:12px">× ${fmtCant(o.cantidad)}</span>`:''}</td>
     <td style="font-family:'DM Mono',monospace"${o.descuento>0?` title="Precio de lista ${money(o.montoLista)} con ${o.descuento}% de descuento"`:''}>${money(o.monto)}${o.descuento>0?` <span style="font-size:10px;color:var(--warn)">-${o.descuento}%</span>`:''}</td>
     <td>${badge(o.estado)}</td>
     <td>${fmt(o.fecha)}</td>
     <td style="display:flex;gap:4px">
       <button class="action-btn" onclick="editModal('pre',${i})">Ver</button>
       <button class="action-btn" style="color:var(--accent);border-color:var(--accent-light)" onclick="generarPDF('pre',${i})" title="Descargar PDF">PDF</button>
+      <button class="action-btn" onclick="imprimirTicket('pre',${i})" title="Imprimir ticket para impresora térmica (80 mm)">Ticket</button>
     </td>
   </tr>`;}).join(''):`<tr><td colspan="6" class="empty-state">Sin presupuestos</td></tr>`;
 }
@@ -1052,7 +1058,7 @@ function openMiNegocio(){
   o.onclick=e=>{if(e.target===o)o.remove();};
   o.innerHTML=`<div class="modal">
     <h3>Mi negocio</h3>
-    <p style="font-size:12px;color:var(--muted);margin:-6px 0 14px">Tu logo y tus datos salen en los presupuestos, comprobantes y estados de cuenta en PDF.</p>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 14px">Tu logo y tus datos salen en los presupuestos, comprobantes y estados de cuenta, en PDF y en el ticket de la impresora térmica.</p>
     <div class="form-row"><label>Logo</label>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div id="logo-prev" style="width:150px;height:64px;border:1px dashed var(--border2);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden"></div>
@@ -1061,8 +1067,16 @@ function openMiNegocio(){
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:5px">Ideal: PNG con fondo transparente.</div>
     </div>
-    <div class="form-row"><label>Nombre del negocio</label><input id="neg-nombre" placeholder="Ej: Panadería Don José" value="${(c.nombre||'').replace(/"/g,'&quot;')}"></div>
-    <div class="form-row"><label>Datos de contacto (opcional)</label><input id="neg-contacto" placeholder="Ej: 343 555-1234 · hola@minegocio.com" value="${(c.contacto||'').replace(/"/g,'&quot;')}"></div>
+    <div class="form-row"><label>Nombre de fantasía</label><input id="neg-nombre" placeholder="Ej: Panadería Don José" value="${escHTML(c.nombre)}"></div>
+    <div class="form-row"><label>Razón social</label><input id="neg-razon" placeholder="Ej: Don José SRL" value="${escHTML(c.razon)}"></div>
+    <div class="form-row" style="display:flex;gap:8px"><div style="flex:1"><label>CUIT</label><input id="neg-cuit" placeholder="30-12345678-9" value="${escHTML(c.cuit)}"></div><div style="flex:1"><label>Condición frente al IVA</label><select id="neg-iva">${['','Responsable Inscripto','Monotributista','IVA Exento'].map(o=>`<option value="${o}" ${(c.condIva||'')===o?'selected':''}>${o||'— (opcional)'}</option>`).join('')}</select></div></div>
+    <div class="form-row"><label>Dirección (opcional)</label><input id="neg-dir" placeholder="Ej: San Martín 123, Paraná" value="${escHTML(c.direccion)}"></div>
+    <div class="form-row" style="display:flex;gap:8px"><div style="flex:1"><label>Teléfono (opcional)</label><input id="neg-tel" placeholder="343 555-1234" value="${escHTML(c.telefono)}"></div><div style="flex:1"><label>Otro contacto (opcional)</label><input id="neg-contacto" placeholder="Email, Instagram, web..." value="${escHTML(c.contacto)}"></div></div>
+    <div class="form-row" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
+      <label style="margin-bottom:6px">Ticket para impresora térmica (80 mm)</label>
+      <label style="display:flex;align-items:center;gap:7px;font-weight:400;cursor:pointer;color:var(--text)"><input type="checkbox" id="neg-tauto" style="width:auto" ${c.ticketAuto?'checked':''}> Imprimir el ticket automáticamente al guardar una venta nueva</label>
+      <button class="btn btn-sm" style="margin-top:8px" onclick="ticketPrueba()">Imprimir ticket de prueba</button>
+    </div>
     <div class="modal-footer"><button class="btn" onclick="document.getElementById('negocio-overlay').remove()">Cancelar</button><button class="btn btn-primary" onclick="saveMiNegocio()">Guardar</button></div>
   </div>`;
   document.body.appendChild(o);prevLogo();
@@ -1087,9 +1101,14 @@ function cargarLogo(input){
   };img.onerror=()=>alert('No pudimos leer esa imagen. Probá con otro archivo PNG o JPG.');img.src=r.result;};
   r.readAsDataURL(f);
 }
+function leerMiNegocio(){
+  const v=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const ta=document.getElementById('neg-tauto');
+  return {nombre:v('neg-nombre'),razon:v('neg-razon'),cuit:v('neg-cuit'),condIva:v('neg-iva'),direccion:v('neg-dir'),telefono:v('neg-tel'),contacto:v('neg-contacto'),ticketAuto:!!(ta&&ta.checked)};
+}
 function saveMiNegocio(){
   const t=window._logoTmp||{};
-  DB.config=Object.assign({},DB.config,{logo:t.logo||'',logoW:t.logoW||0,logoH:t.logoH||0,nombre:document.getElementById('neg-nombre').value.trim(),contacto:document.getElementById('neg-contacto').value.trim()});
+  DB.config=Object.assign({},DB.config,leerMiNegocio(),{logo:t.logo||'',logoW:t.logoW||0,logoH:t.logoH||0});
   save();document.getElementById('negocio-overlay').remove();
 }
 
@@ -1111,18 +1130,23 @@ function logotipoMagentaGris(){
 function pdfEncabezado(doc,titulo,subtitulo){
   const c=DB.config||{},C=PDF_C;
   doc.setFillColor(...C.acento);doc.rect(0,0,210,3,'F');
-  let yTxt=19;
+  const l1=[c.razon,c.cuit?'CUIT '+c.cuit:'',c.condIva].filter(Boolean).join(' · ');
+  const l2=[c.direccion,c.telefono?'Tel. '+c.telefono:'',c.contacto].filter(Boolean).join(' · ');
+  let y,conLogo=false;
+  const lineaChica=txt=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C.gris);doc.text(doc.splitTextToSize(txt,105)[0],15,y);y+=4;};
   if(c.logo&&c.logoW&&c.logoH){
-    const k=Math.min(60/c.logoW,15/c.logoH);
-    try{doc.addImage(c.logo,c.logo.indexOf('image/jpeg')>0?'JPEG':'PNG',15,9,c.logoW*k,c.logoH*k);yTxt=28.5;}catch(e){}
+    const k=Math.min(60/c.logoW,13/c.logoH);
+    try{doc.addImage(c.logo,c.logo.indexOf('image/jpeg')>0?'JPEG':'PNG',15,8,c.logoW*k,c.logoH*k);conLogo=true;}catch(e){}
   }
-  if(yTxt===19&&c.nombre){
-    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.negro);
-    doc.text(doc.splitTextToSize(c.nombre,100)[0],15,yTxt);yTxt=25;
-    if(c.contacto){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.gris);doc.text(doc.splitTextToSize(c.contacto,100)[0],15,yTxt);}
-  }else if(yTxt===28.5&&(c.nombre||c.contacto)){
-    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.gris);
-    doc.text(doc.splitTextToSize([c.nombre,c.contacto].filter(Boolean).join(' · '),100)[0],15,yTxt);
+  if(conLogo){
+    y=25;
+    if(l1||c.nombre)lineaChica(l1||c.nombre);
+    if(l2)lineaChica(l2);
+  }else{
+    y=17;
+    if(c.nombre){doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.negro);doc.text(doc.splitTextToSize(c.nombre,105)[0],15,y);y+=5.5;}
+    if(l1)lineaChica(l1);
+    if(l2)lineaChica(l2);
   }
   doc.setTextColor(...C.negro);doc.setFont('helvetica','bold');doc.setFontSize(15);
   doc.text(titulo,195,17,{align:'right'});
@@ -1153,7 +1177,8 @@ function generarPDF(tipo, i){
   const item = tipo==='ven' ? DB.ventas[i] : DB.presupuestos[i];
   const esPresupuesto = tipo==='pre';
   const titulo = esPresupuesto ? 'PRESUPUESTO' : 'COMPROBANTE DE VENTA';
-  const numero = String(i+1).padStart(4,'0');
+  if(!item.nro)asegurarNumeracion();
+  const numero = nroComp(item);
   const fecha = fmt(item.fecha||today());
 
   // Colores
@@ -1209,6 +1234,16 @@ function generarPDF(tipo, i){
   doc.setFont('helvetica','bold');
   doc.text(money(item.monto),175,97,'right');
 
+  // Cantidad x precio unitario y descuento
+  let yDet=97+prodLines.length*4.6+1.5;
+  const cantPdf=parseNum(item.cantidad)||1,listaPdf=parseNum(item.montoLista)||parseNum(item.monto);
+  const unitPdf=parseNum(item.precioUnit)||Math.round(listaPdf/cantPdf*100)/100,descPdf=parseNum(item.descuento);
+  if(cantPdf!==1||descPdf>0){
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...gris);
+    doc.text([fmtCant(cantPdf)+' × '+money(unitPdf),descPdf>0?'Descuento '+descPdf+'% (lista '+money(listaPdf)+')':''].filter(Boolean).join('  ·  '),15,yDet);
+    yDet+=5.5;
+  }
+
   // Buscar precio del producto si existe
   const prod=DB.productos.find(p=>p.nombre===item.producto);
   if(prod&&prod.descripcion){
@@ -1216,7 +1251,7 @@ function generarPDF(tipo, i){
     doc.setFontSize(9);
     doc.setTextColor(...gris);
     const descLines=doc.splitTextToSize(prod.descripcion,140);
-    doc.text(descLines,15,104);
+    doc.text(descLines.slice(0,2),15,yDet+1);
   }
 
   // Línea total
@@ -1337,6 +1372,153 @@ function generarPDFCC(){
   doc.save('Cuenta_corriente_'+(cliente||'cliente').replace(/[^a-zA-Z0-9]/g,'_')+'_'+today()+'.pdf');
 }
 
+// NUMERACIÓN FIJA DE COMPROBANTES (correlativa, no cambia al agregar o borrar ventas)
+function asegurarNumeracion(){
+  DB.config=DB.config||{};let changed=false;
+  [['ventas','seqVen'],['presupuestos','seqPre']].forEach(([k,seq])=>{
+    const sin=DB[k].map((x,idx)=>({x,idx})).filter(o=>!o.x.nro);
+    if(!sin.length)return;
+    sin.sort((a,b)=>(a.x.fecha||'').localeCompare(b.x.fecha||'')||b.idx-a.idx);
+    let n=Math.max(parseInt(DB.config[seq])||0,...DB[k].map(x=>parseInt(x.nro)||0));
+    sin.forEach(o=>{o.x.nro=++n;});
+    DB.config[seq]=n;changed=true;
+  });
+  if(changed)saveLocal();
+}
+function nroComp(item){return String((item&&item.nro)||0).padStart(6,'0');}
+
+// STOCK: las ventas realizadas descuentan unidades del producto (y las devuelven si se editan o borran)
+function prodConStock(nombre){
+  const p=DB.productos.find(x=>x.nombre===nombre);
+  if(!p||(p.tipo||'Producto')!=='Producto'||p.stock===''||p.stock===undefined||p.stock===null)return null;
+  return p;
+}
+function moverStockVenta(prev,nueva){
+  if(prev&&prev.stockMov){const p=DB.productos.find(x=>x.nombre===prev.stockMov.prod);if(p)p.stock=Math.round((parseNum(p.stock)+parseNum(prev.stockMov.qty))*100)/100;}
+  if(!nueva)return;
+  delete nueva.stockMov;
+  // Una venta que ya estaba realizada antes de existir el control de stock no descuenta al editarla
+  const aplica=!prev||!!prev.stockMov||prev.estado!=='Realizada';
+  if(nueva.estado==='Realizada'&&aplica){
+    const p=prodConStock(nueva.producto);
+    if(p){const q=parseNum(nueva.cantidad)||1;p.stock=Math.round((parseNum(p.stock)-q)*100)/100;nueva.stockMov={prod:p.nombre,qty:q};}
+  }
+}
+
+// TICKET 80 mm PARA IMPRESORA TÉRMICA
+function escHTML(s){return String(s==null?'':s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));}
+function ticketCabecera(c){
+  c=c||DB.config||{};let h='';
+  if(c.logo)h+=`<div class="c"><img class="logo" src="${c.logo}" alt=""></div>`;
+  if(c.nombre)h+=`<div class="c nom">${escHTML(c.nombre)}</div>`;
+  if(c.razon)h+=`<div class="c">${escHTML(c.razon)}</div>`;
+  if(c.cuit)h+=`<div class="c">CUIT ${escHTML(c.cuit)}</div>`;
+  if(c.condIva)h+=`<div class="c">${escHTML(c.condIva)}</div>`;
+  if(c.direccion)h+=`<div class="c sm">${escHTML(c.direccion)}</div>`;
+  if(c.telefono)h+=`<div class="c sm">Tel. ${escHTML(c.telefono)}</div>`;
+  if(c.contacto)h+=`<div class="c sm">${escHTML(c.contacto)}</div>`;
+  return h;
+}
+function ticketEmitido(){const a=new Date();return `<div class="c sm" style="margin-top:1.5mm">Emitido ${a.toLocaleDateString('es-AR')} ${a.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}</div>`;}
+function ticketDoc(cuerpo){
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket</title><style>
+@page{size:80mm 200mm;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#fff;color:#000}
+body{width:80mm}
+.t{width:72mm;margin:0 auto;padding:3mm 0 6mm;font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.28;color:#000}
+.c{text-align:center}
+.nom{font-size:17pt;font-weight:700;letter-spacing:.3px;line-height:1.15;margin:1mm 0 .6mm}
+.sm{font-size:10pt}
+.b{font-weight:700}
+.hr{border-top:1px dashed #000;margin:2.2mm 0}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:2mm}
+.row>span:last-child{white-space:nowrap;text-align:right}
+.tit{font-size:12pt;font-weight:700;letter-spacing:.5px;margin-bottom:.8mm}
+.item{margin:0 0 1.6mm}
+.tot{font-size:15pt;font-weight:700;margin-top:.6mm}
+.leg{font-size:10pt;font-weight:700;text-align:center}
+.logo{max-width:46mm;max-height:20mm;filter:grayscale(1);margin-bottom:1mm}
+</style></head><body><div class="t">${cuerpo}</div></body></html>`;
+}
+function ticketComprobante(item,esPre,c){
+  const cant=parseNum(item.cantidad)||1;
+  const lista=parseNum(item.montoLista)||parseNum(item.monto);
+  const unit=parseNum(item.precioUnit)||Math.round(lista/cant*100)/100;
+  const desc=parseNum(item.descuento),total=parseNum(item.monto);
+  let h=ticketCabecera(c)+'<div class="hr"></div>';
+  h+=`<div class="c tit">${esPre?'PRESUPUESTO':'COMPROBANTE DE VENTA'}</div>`;
+  h+=`<div class="row sm"><span>N° ${nroComp(item)}</span><span>Fecha ${fmt(item.fecha||today())}</span></div>`;
+  if(item.cliente)h+=`<div class="sm">Cliente: <span class="b">${escHTML(item.cliente)}</span></div>`;
+  h+='<div class="hr"></div>';
+  h+=`<div class="item"><div class="b">${escHTML(item.producto||item.descripcion||'Sin descripción')}</div><div class="row"><span>${fmtCant(cant)} x ${money(unit)}</span><span>${money(lista)}</span></div></div>`;
+  h+='<div class="hr"></div>';
+  if(desc>0)h+=`<div class="row"><span>Subtotal</span><span>${money(lista)}</span></div><div class="row"><span>Descuento ${desc}%</span><span>-${money(lista-total)}</span></div>`;
+  h+=`<div class="row tot"><span>TOTAL</span><span>${money(total)}</span></div>`;
+  h+='<div class="hr"></div>';
+  h+=`<div class="leg">${esPre?'DOCUMENTO':'COMPROBANTE'} NO VÁLIDO COMO FACTURA</div>`;
+  h+=ticketEmitido();
+  if(!esPre)h+='<div class="c sm" style="margin-top:1mm">¡Gracias por su compra!</div>';
+  return ticketDoc(h);
+}
+function ticketCuentaCorriente(cliente){
+  const movs=(DB.cuentaCorriente[cliente]||[]).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const val=m=>(m.tipo==='Cargo'?1:-1)*parseNum(m.monto);
+  const MAX=20,ult=movs.slice(-MAX),ant=movs.slice(0,movs.length-ult.length);
+  const saldoAnt=ant.reduce((s,m)=>s+val(m),0),deuda=movs.reduce((s,m)=>s+val(m),0);
+  const firmado=v=>(v<0?'-':'')+money(Math.abs(v));
+  let h=ticketCabecera()+'<div class="hr"></div><div class="c tit">ESTADO DE CUENTA</div>';
+  h+=`<div class="sm">Cliente: <span class="b">${escHTML(cliente||'—')}</span></div><div class="sm">Al ${fmt(today())}</div><div class="hr"></div>`;
+  if(!movs.length)h+='<div class="sm">Sin movimientos registrados.</div>';
+  if(ant.length)h+=`<div class="row sm item"><span>Saldo anterior (${ant.length} mov.)</span><span>${firmado(saldoAnt)}</span></div>`;
+  ult.forEach(m=>{h+=`<div class="item sm"><div>${fmt(m.fecha)} · ${escHTML(m.concepto||'—')}</div><div class="row"><span>${m.tipo==='Cargo'?'Cargo':'Pago'}</span><span>${firmado(val(m))}</span></div></div>`;});
+  h+='<div class="hr"></div>';
+  h+=`<div class="row tot"><span>${deuda>0?'SALDO A PAGAR':deuda<0?'SALDO A FAVOR':'CUENTA AL DÍA'}</span><span>${money(Math.abs(deuda))}</span></div>`;
+  h+='<div class="hr"></div><div class="leg">DOCUMENTO NO VÁLIDO COMO FACTURA</div>'+ticketEmitido();
+  return ticketDoc(h);
+}
+// Imprime el ticket en un iframe oculto; el largo de la hoja se ajusta al contenido (rollo continuo)
+function imprimirTicketDoc(html){
+  const old=document.getElementById('ticket-frame');if(old)old.remove();
+  const f=document.createElement('iframe');
+  f.id='ticket-frame';f.setAttribute('aria-hidden','true');f.setAttribute('tabindex','-1');
+  f.style.cssText='position:fixed;left:-10000px;top:0;width:80mm;height:200mm;border:0';
+  document.body.appendChild(f);
+  const d=f.contentDocument;d.open();d.write(html);d.close();
+  const imprimir=()=>{
+    const t=d.querySelector('.t');
+    const mm=Math.ceil((t?t.getBoundingClientRect().height:600)*25.4/96)+2;
+    const st=d.createElement('style');st.textContent='@page{size:80mm '+mm+'mm;margin:0}';d.head.appendChild(st);
+    const w=f.contentWindow;
+    w.onafterprint=()=>setTimeout(()=>f.remove(),300);
+    w.focus();w.print();
+  };
+  Promise.all([...d.images].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;}))).then(()=>setTimeout(imprimir,60));
+}
+function faltanDatosComercio(){
+  const c=DB.config||{};
+  if(c.nombre||c.razon||c.logo)return false;
+  if(confirm('Todavía no cargaste los datos de tu comercio (nombre, razón social, CUIT).\n\n¿Querés cargarlos ahora? Si tocás "Cancelar", el ticket se imprime sin encabezado.')){openMiNegocio();return true;}
+  return false;
+}
+function imprimirTicket(tipo,i){
+  const item=tipo==='ven'?DB.ventas[i]:DB.presupuestos[i];if(!item)return;
+  if(faltanDatosComercio())return;
+  if(!item.nro)asegurarNumeracion();
+  imprimirTicketDoc(ticketComprobante(item,tipo==='pre'));
+}
+function imprimirTicketCC(){
+  if(faltanDatosComercio())return;
+  imprimirTicketDoc(ticketCuentaCorriente(ccClienteId));
+}
+// Ticket de prueba desde "Mi negocio": usa lo que está escrito en el formulario, aunque todavía no se haya guardado
+function ticketPrueba(){
+  const t=window._logoTmp||{};
+  const c=Object.assign({},leerMiNegocio(),{logo:t.logo||''});
+  const ejemplo={nro:0,fecha:today(),cliente:'Consumidor final',producto:'Producto de prueba',cantidad:2,precioUnit:1500,montoLista:3000,descuento:0,monto:3000};
+  imprimirTicketDoc(ticketComprobante(ejemplo,false,c));
+}
+
 // CC AUTO-SYNC: registra movimiento en CC cuando se guarda una venta/cobranza
 function syncCC(clienteNombre, concepto, monto, tipo, fecha, refId){
   if(!clienteNombre||!monto)return;
@@ -1361,7 +1543,7 @@ function actualizarVencidos(){
   });
   if(changed)saveLocal();
 }
-function renderAll(){procesarRecurrentes();actualizarVencidos();renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();renderProductos();renderMetricas();}
+function renderAll(){procesarRecurrentes();asegurarNumeracion();actualizarVencidos();renderDashboard();renderClientes();renderVentas();renderLeads();renderCobranzas();renderPresupuestos();renderGastos();renderProductos();renderMetricas();}
 
 // MODAL FORMS
 const FORMS={
@@ -1378,10 +1560,11 @@ const FORMS={
       <label>Nombre del nuevo producto/servicio *</label><input id="f-prod-nuevo" placeholder="Ej: Mantenimiento web mensual">
       <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:6px;cursor:pointer"><input type="checkbox" id="f-prod-guardar" checked style="width:auto"> Guardarlo en el catálogo de productos</label>
     </div>
-    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.montoLista||d.monto||''}" step="0.01" oninput="calcVentaFinal()"></div>
+    <div class="form-row" style="display:flex;gap:8px"><div style="flex:0 0 32%"><label>Cantidad</label><input type="number" id="f-cant" value="${d.cantidad||1}" step="any" min="0" oninput="calcVentaFinal()"></div><div style="flex:1"><label>Precio unitario</label><input type="number" id="f-monto" value="${d.precioUnit||((d.montoLista||d.monto)?Math.round(parseNum(d.montoLista||d.monto)/(parseNum(d.cantidad)||1)*100)/100:'')}" step="0.01" oninput="calcVentaFinal()"></div></div>
     <div class="form-row"><label>Descuento % (opcional)</label><input type="number" id="f-desc" value="${d.descuento||''}" step="0.01" min="0" max="100" placeholder="0" oninput="calcVentaFinal()"></div>
     <div class="form-row"><label>Total final</label><input id="f-final" disabled style="background:var(--bg);font-family:'DM Mono',monospace"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Consulta'?'selected':''}>Consulta</option><option ${d.estado==='Realizada'?'selected':''}>Realizada</option></select></div>
+    ${d.id?'':`<div class="form-row"><label style="display:flex;align-items:center;gap:7px;font-weight:400;cursor:pointer;color:var(--text)"><input type="checkbox" id="f-pagada" style="width:auto" ${(DB.config||{}).ventaCobrada?'checked':''}> Ya la cobré (pago en el momento)</label><span style="font-size:11px;color:var(--muted);display:block;margin-top:3px">Si la marcás, la venta realizada queda cobrada y no genera una cobranza pendiente.</span></div>`}
     <div class="form-row"><label>Fecha de la venta</label><input type="date" id="f-fecha" value="${d.fecha||today()}"></div>
     <div class="form-row"><label>Fecha pactada de cobro</label><input type="date" id="f-fcobro" value="${d.fechaCobro||d.fecha||today()}"></div>
     <div class="form-row"><label>¿Se repite?</label><select id="f-recur"><option ${(!d.recurrencia||d.recurrencia==='Única')?'selected':''}>Única</option><option ${d.recurrencia==='Semanal'?'selected':''}>Semanal</option><option ${d.recurrencia==='Quincenal'?'selected':''}>Quincenal</option><option ${d.recurrencia==='Mensual'?'selected':''}>Mensual</option><option ${d.recurrencia==='Anual'?'selected':''}>Anual</option></select><span style="font-size:11px;color:var(--muted);display:block;margin-top:3px">Si se repite, cada período se genera sola la venta y su cobranza.</span></div>`,
@@ -1408,7 +1591,7 @@ const FORMS={
       <label>Nombre del nuevo producto/servicio *</label><input id="f-prod-nuevo" placeholder="Ej: Rediseño de marca">
       <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:6px;cursor:pointer"><input type="checkbox" id="f-prod-guardar" checked style="width:auto"> Guardarlo en el catálogo de productos</label>
     </div>
-    <div class="form-row"><label>Monto</label><input type="number" id="f-monto" value="${d.montoLista||d.monto||''}" step="0.01" oninput="calcVentaFinal()"></div>
+    <div class="form-row" style="display:flex;gap:8px"><div style="flex:0 0 32%"><label>Cantidad</label><input type="number" id="f-cant" value="${d.cantidad||1}" step="any" min="0" oninput="calcVentaFinal()"></div><div style="flex:1"><label>Precio unitario</label><input type="number" id="f-monto" value="${d.precioUnit||((d.montoLista||d.monto)?Math.round(parseNum(d.montoLista||d.monto)/(parseNum(d.cantidad)||1)*100)/100:'')}" step="0.01" oninput="calcVentaFinal()"></div></div>
     <div class="form-row"><label>Descuento % (opcional)</label><input type="number" id="f-desc" value="${d.descuento||''}" step="0.01" min="0" max="100" placeholder="0" oninput="calcVentaFinal()"></div>
     <div class="form-row"><label>Total final</label><input id="f-final" disabled style="background:var(--bg);font-family:'DM Mono',monospace"></div>
     <div class="form-row"><label>Estado</label><select id="f-estado"><option ${d.estado==='Borrador'?'selected':''}>Borrador</option><option ${d.estado==='Enviada'?'selected':''}>Enviada</option><option ${d.estado==='Aceptada'?'selected':''}>Aceptada</option><option ${d.estado==='Rechazada'?'selected':''}>Rechazada</option></select></div>
@@ -1454,7 +1637,7 @@ function afterFormRender(t){
   if(t==='prod')calcMargen();
 }
 function getList(t){return t==='cli'?DB.clientes:t==='ven'?DB.ventas:t==='lead'?DB.leads:t==='cob'?DB.cobranzas:t==='pre'?DB.presupuestos:t==='gas'?DB.gastos:DB.productos;}
-function delItem(){if(!confirm('¿Eliminar?'))return;const{t,i}=modalState;getList(t).splice(i,1);save();renderAll();closeModal();}
+function delItem(){if(!confirm('¿Eliminar?'))return;const{t,i}=modalState;if(t==='ven')moverStockVenta(DB.ventas[i],null);getList(t).splice(i,1);save();renderAll();closeModal();}
 function saveForm(){
   const{t,i}=modalState;const list=getList(t);
   let obj=i!==null?{...list[i]}:{id:generarId()};
@@ -1471,7 +1654,9 @@ function saveForm(){
     if(prodV===null)return alert('Escribí el nombre del nuevo producto/servicio');
     obj.producto=prodV;
     obj.descripcion=obj.producto;
-    obj.montoLista=parseNum(document.getElementById('f-monto').value);
+    obj.cantidad=parseNum(document.getElementById('f-cant').value)||1;
+    obj.precioUnit=parseNum(document.getElementById('f-monto').value);
+    obj.montoLista=Math.round(obj.precioUnit*obj.cantidad*100)/100;
     obj.descuento=Math.min(Math.max(parseNum(document.getElementById('f-desc').value),0),100);
     obj.monto=Math.round(obj.montoLista*(1-obj.descuento/100)*100)/100;
     obj.estado=document.getElementById('f-estado').value;
@@ -1480,11 +1665,16 @@ function saveForm(){
     const recurAnt=obj.recurrencia;
     obj.recurrencia=document.getElementById('f-recur').value;
     if(obj.recurrencia!==recurAnt)obj.proxima=null;
+    const chkPagada=document.getElementById('f-pagada');
+    if(chkPagada){DB.config=DB.config||{};DB.config.ventaCobrada=chkPagada.checked;}
     if(obj.estado==='Realizada'){
       const ci=DB.cobranzas.findIndex(c=>c.ventaId===obj.id);
       if(ci===-1){
-        DB.cobranzas.unshift({id:generarId(),ventaId:obj.id,cliente:obj.cliente,concepto:obj.producto||'Venta',total:obj.monto,cobrado:0,vencimiento:obj.fechaCobro,estado:'Pendiente'});
-        alert('Venta realizada. Cobranza generada automáticamente con vencimiento '+fmt(obj.fechaCobro)+'.');
+        const yaCobrada=!!(chkPagada&&chkPagada.checked);
+        const nc={id:generarId(),ventaId:obj.id,cliente:obj.cliente,concepto:obj.producto||'Venta',total:obj.monto,cobrado:yaCobrada?obj.monto:0,vencimiento:obj.fechaCobro,estado:yaCobrada?'Cobrado':'Pendiente'};
+        DB.cobranzas.unshift(nc);
+        if(yaCobrada)registrarPagoCC(nc);
+        else alert('Venta realizada. Cobranza generada automáticamente con vencimiento '+fmt(obj.fechaCobro)+'.');
       }else{
         DB.cobranzas[ci].cliente=obj.cliente;DB.cobranzas[ci].concepto=obj.producto||'Venta';DB.cobranzas[ci].total=obj.monto;DB.cobranzas[ci].vencimiento=obj.fechaCobro;
       }
@@ -1514,7 +1704,9 @@ function saveForm(){
     if(prodP===null)return alert('Escribí el nombre del nuevo producto/servicio');
     obj.producto=prodP;
     obj.descripcion=obj.producto;
-    obj.montoLista=parseNum(document.getElementById('f-monto').value);
+    obj.cantidad=parseNum(document.getElementById('f-cant').value)||1;
+    obj.precioUnit=parseNum(document.getElementById('f-monto').value);
+    obj.montoLista=Math.round(obj.precioUnit*obj.cantidad*100)/100;
     obj.descuento=Math.min(Math.max(parseNum(document.getElementById('f-desc').value),0),100);
     obj.monto=Math.round(obj.montoLista*(1-obj.descuento/100)*100)/100;
     obj.estado=document.getElementById('f-estado').value;obj.fecha=document.getElementById('f-fecha').value;
@@ -1530,17 +1722,19 @@ function saveForm(){
     obj.nombre=document.getElementById('f-nombre').value;obj.codigo=document.getElementById('f-codigo').value;obj.categoria=(document.getElementById('f-categoria').value||'').trim();obj.proveedor=(document.getElementById('f-proveedor').value||'').trim();obj.tipo=document.getElementById('f-tipo').value;obj.stock=document.getElementById('f-stock').value;obj.stockMin=document.getElementById('f-stockmin').value;obj.costo=document.getElementById('f-costo').value;obj.iva=document.getElementById('f-iva').value;obj.precio=document.getElementById('f-precio').value;obj.descripcion=document.getElementById('f-descripcion').value;
     if(!obj.nombre)return alert('Nombre requerido');
   }
+  if(t==='ven')moverStockVenta(i!==null?list[i]:null,obj);
   if(i!==null)list[i]=obj;else list.unshift(obj);
   save();renderAll();closeModal();
+  if(t==='ven'&&i===null&&(DB.config||{}).ticketAuto){const idx=DB.ventas.indexOf(obj);if(idx>-1)setTimeout(()=>imprimirTicket('ven',idx),150);}
 }
 
 // EXCEL
 const SHEET_MAP={
   clientes:{name:'Clientes',cols:['nombre','tel','email','notas']},
-  ventas:{name:'Ventas',cols:['cliente','producto','monto','descuento','estado','fecha','fechaCobro','recurrencia']},
+  ventas:{name:'Ventas',cols:['cliente','producto','cantidad','monto','descuento','estado','fecha','fechaCobro','recurrencia']},
   leads:{name:'Consultas',cols:['contacto','tel','interes','canal','estado','fecha']},
   cobranzas:{name:'Cobranzas',cols:['cliente','concepto','total','cobrado','vencimiento','estado']},
-  presupuestos:{name:'Presupuestos',cols:['cliente','producto','monto','estado','fecha']},
+  presupuestos:{name:'Presupuestos',cols:['cliente','producto','cantidad','monto','descuento','estado','fecha']},
   gastos:{name:'Gastos',cols:['fecha','concepto','categoria','monto','estado']},
   productos:{name:'Productos',cols:['codigo','nombre','categoria','proveedor','tipo','stock','stockMin','costo','iva','precio','descripcion']}
 };
